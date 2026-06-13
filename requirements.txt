@@ -8,11 +8,8 @@ pydantic==2.10.4
 pydantic-settings==2.7.0
 python-dotenv==1.0.1
 
-# ── PyTorch CPU-only — must come before sentence-transformers
-# This prevents pip from pulling in 1.5GB+ of CUDA/GPU packages
-torch==2.2.2+cpu --extra-index-url https://download.pytorch.org/whl/cpu
-
 # ── Embeddings ────────────────────────────────────────────────────────────────
+# torch pulled separately via build command to force CPU-only wheel
 sentence-transformers==2.7.0
 
 # ── LLM / Agents ─────────────────────────────────────────────────────────────
