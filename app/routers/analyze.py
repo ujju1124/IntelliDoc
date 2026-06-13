@@ -154,26 +154,24 @@ Context:
             }
 
         # ── 4. Suggested debate questions (document-specific) ─────────────────
+        # Uses the summary (already generated) as grounding so the LLM
+        # stays anchored to THIS document's actual topic, not UBI or any other example.
         questions_raw = call_groq_api(
-            f"""You are analyzing a specific document. Generate exactly 4 debate questions that are SPECIFIC to this document's actual content, topics, and arguments. Do NOT generate generic questions.
+            f"""Generate exactly 4 debate questions that are specific to the document described below.
 
-The questions must reference specific concepts, claims, or topics FROM this document.
+Rules:
+- Each question MUST reference a concrete topic, claim, policy, person, data point, or concept from this specific document
+- Questions must be genuinely debatable — not simple factual lookups
+- Do NOT write generic questions like "What are the main arguments?" or "What are the weaknesses?"
+- Each question should open a different angle of debate
 
-Document content:
+Document summary (use this to understand the topic):
+{summary}
+
+Document content (use this for specific details):
 {context}
 
-Examples of BAD generic questions (do NOT generate these):
-- "What are the main arguments in this document?"
-- "What are the weaknesses in this document's reasoning?"
-
-Examples of GOOD specific questions (based on a UBI document):
-- "Should UBI be funded through wealth taxes or value-added taxes?"
-- "Can UBI coexist with existing welfare programs like food stamps?"
-- "Does the Finnish UBI pilot prove UBI works at scale?"
-- "Is UBI a realistic solution in developing economies?"
-
-Now generate 4 specific debate questions for THIS document.
-Return ONLY a JSON array of 4 question strings, no markdown:
+Return ONLY a JSON array of 4 strings, no markdown, no explanation:
 ["question 1", "question 2", "question 3", "question 4"]""",
             model="llama-3.1-8b-instant",
             json_mode=True
