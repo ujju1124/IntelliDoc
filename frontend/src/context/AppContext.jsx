@@ -62,7 +62,14 @@ export const AppContextProvider = ({ children }) => {
   const [analysisData, setAnalysisData] = useState(() => {
     try {
       const raw = sessionStorage.getItem(SS_ANALYSIS_KEY);
-      return raw ? JSON.parse(raw) : null;
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      // Invalidate old cached analysis that's missing suggested_questions
+      if (!parsed?.suggested_questions) {
+        sessionStorage.removeItem(SS_ANALYSIS_KEY);
+        return null;
+      }
+      return parsed;
     } catch { return null; }
   });
   // All saved debate sessions
