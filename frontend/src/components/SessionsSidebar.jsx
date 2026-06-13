@@ -15,11 +15,11 @@ const SessionsSidebar = ({ onNewSession }) => {
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [filter, setFilter] = useState('all'); // 'all' | 'current'
 
-  const currentDocId = currentDocument?.document_id;
+  const currentFilename = currentDocument?.filename;
 
-  // Filter sessions
+  // Filter sessions — match by filename, not document_id
   const visibleSessions = filter === 'current'
-    ? allSessions.filter(s => s.documentId === currentDocId)
+    ? allSessions.filter(s => s.documentName === currentFilename)
     : allSessions;
 
   const grouped = groupSessions(visibleSessions);
@@ -98,7 +98,7 @@ const SessionsSidebar = ({ onNewSession }) => {
                       key={session.id}
                       session={session}
                       isActive={session.id === activeSessionId}
-                      isCurrentDoc={session.documentId === currentDocId}
+                      isCurrentDoc={session.documentName === currentFilename}
                       isHovered={hoveredId === session.id}
                       confirmingDelete={confirmDelete === session.id}
                       onMouseEnter={() => setHoveredId(session.id)}

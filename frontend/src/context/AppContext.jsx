@@ -150,11 +150,17 @@ export const AppContextProvider = ({ children }) => {
   }, [allSessions]);
 
   // ── Check if active session belongs to current document ───────────────────
+  // Matches by filename (stable) rather than document_id (changes on every re-upload)
   const isActiveSessionReadOnly = useCallback(() => {
     const session = allSessions.find(s => s.id === activeSessionId);
     if (!session) return false; // brand new unsaved session — not read-only
-    if (!session.documentId) return false; // old session with no doc id stored
-    return session.documentId !== currentDocument?.document_id;
+    if (!session.documentName) return false; // old session with no doc stored
+
+    const currentFilename = currentDocument?.filename;
+    if (!currentFilename) return false; // no document loaded yet
+
+    // Same filename = same document (user re-uploaded the same file)
+    return session.documentName !== currentFilename;
   }, [allSessions, activeSessionId, currentDocument]);
 
   // ── Delete a session ───────────────────────────────────────────────────────
