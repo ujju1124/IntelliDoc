@@ -31,11 +31,13 @@ const DashboardPage = () => {
     if (!currentDocument) navigate('/');
   }, [currentDocument, navigate]);
 
-  // ── Auto-analyze ───────────────────────────────────────────────────────────
+  // Auto-analyze — re-run if: no data, wrong document, or old cache missing suggested_questions
   useEffect(() => {
     if (
       currentDocument &&
-      (!analysisData || analysisData.document_id !== currentDocument.document_id)
+      (!analysisData ||
+        analysisData.document_id !== currentDocument.document_id ||
+        !analysisData.suggested_questions)
     ) {
       analyzeDoc(currentDocument.document_id).then(result => {
         if (result) setAnalysisData(result);
