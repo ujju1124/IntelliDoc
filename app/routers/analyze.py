@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from app.services.retrieval_service import retrieve_relevant_chunks
 from app.services.llm_service import call_groq_api
 import json
+import re
 
 router = APIRouter()
 
@@ -17,39 +18,82 @@ class AnalyzeResponse(BaseModel):
     summary: str
     insights: list
     mindmap: dict
-    suggested_questions: list  # doc-specific debate starters
+    suggested_questions: list
 
 
 # ─── helpers ─────────────────────────────────────────────────────────────────
 
+def _strip_fences(raw: str) -> str:
+    """Remove markdown code fences and leading/trailing whitespace."""
+    return raw.replace('```json', '').replace('```', '').strip()
+
+
 def _parse_json_list(raw: str, fallback: list) -> list:
-    """Strip markdown fences, parse JSON, return list or fallback."""
-    cleaned = raw.replace('```json', '').replace('```', '').strip()
+    """Parse a JSON array from LLM output with multi-layer fallback."""
+    cleaned = _strip_fences(raw)
     try:
         data = json.loads(cleaned)
         if isinstance(data, list):
-            return data
+            return [item for item in data if isinstance(item, str) and item.strip()]
         if isinstance(data, dict):
-            # Try every value that is a list — return the first non-empty one
+            # Try known keys first, then any list value
             for key in ("items", "insights", "key_insights", "keyInsights",
                         "questions", "suggested_questions", "debate_questions",
                         "results", "data"):
                 if key in data and isinstance(data[key], list) and data[key]:
                     return data[key]
-            # Last resort: return the first list value found in the dict
             for val in data.values():
                 if isinstance(val, list) and val:
                     return val
     except (json.JSONDecodeError, ValueError):
-        # line-by-line fallback
-        lines = []
-        for line in raw.strip().split('\n'):
-            c = line.strip().lstrip('-*0123456789.)').strip('"\'').strip()
-            if c and len(c) > 10:
-                lines.append(c)
-        if lines:
-            return lines
-    return fallback
+        pass
+
+    # Line-by-line text fallback
+    lines = []
+    for line in raw.strip().split('\n'):
+        c = line.strip().lstrip('-*0123456789.)').strip('"\'').strip()
+        if c and len(c) > 10:
+            lines.append(c)
+    return lines if lines else fallback
+
+
+def _parse_mindmap(raw: str, topic_fallback: str) -> dict:
+    """Parse mindmap JSON with robust fallback — never raises, never returns None."""
+    cleaned = _strip_fences(raw)
+
+    # Try to extract a JSON object even if the response has extra text
+    json_match = re.search(r'\{.*\}', cleaned, re.DOTALL)
+    if json_match:
+        cleaned = json_match.group(0)
+
+    try:
+        data = json.loads(cleaned)
+        if isinstance(data, dict) and "central" in data and isinstance(data.get("branches"), list):
+            # Validate each branch has label + children
+            valid_branches = []
+            for b in data["branches"]:
+                if isinstance(b, dict) and "label" in b:
+                    children = b.get("children", [])
+                    if not isinstance(children, list):
+                        children = []
+                    valid_branches.append({
+                        "label": str(b["label"]),
+                        "children": [str(c) for c in children if c]
+                    })
+            if valid_branches:
+                return {"central": str(data["central"]), "branches": valid_branches}
+    except (json.JSONDecodeError, ValueError, TypeError):
+        pass
+
+    # Fallback uses actual topic from summary so it's not hardcoded
+    return {
+        "central": topic_fallback,
+        "branches": [
+            {"label": "Key Concepts",   "children": ["Concept 1", "Concept 2", "Concept 3"]},
+            {"label": "Main Arguments", "children": ["Argument 1", "Argument 2", "Argument 3"]},
+            {"label": "Implications",   "children": ["Implication 1", "Implication 2", "Implication 3"]},
+        ]
+    }
 
 
 # ─── endpoint ─────────────────────────────────────────────────────────────────
@@ -90,6 +134,7 @@ Summary:""",
         )
 
         # ── 2. Insights ───────────────────────────────────────────────────────
+        # json_mode=True is safe here because the prompt asks for a simple array
         insights_raw = call_groq_api(
             f"""Based on this document, provide exactly 5 key insights as a JSON array of strings.
 
@@ -111,70 +156,59 @@ Return format (JSON array only, no markdown):
             "Further analysis of this document is recommended",
         ])
 
-        # Normalise to exactly 5
         while len(insights) < 5:
             insights.append(f"Additional insight from the document (point {len(insights) + 1})")
         insights = insights[:5]
 
         # ── 3. Mind map ───────────────────────────────────────────────────────
+        # NOTE: json_mode=False here — Groq rejects mindmap JSON too often because
+        # the nested structure is harder for the LLM to get exactly right.
+        # We parse manually with _parse_mindmap which is more tolerant.
         mindmap_raw = call_groq_api(
-            f"""Create a mind map structure for this document as JSON.
-Return ONLY valid JSON, no markdown, no backticks.
+            f"""Create a mind map for this document. Return ONLY a JSON object.
+No markdown, no backticks, no explanation — just the raw JSON object.
 
-Required format:
+The JSON must follow this exact structure:
 {{
-  "central": "main topic",
+  "central": "short main topic (3-5 words)",
   "branches": [
-    {{"label": "branch 1", "children": ["child1", "child2", "child3"]}},
-    {{"label": "branch 2", "children": ["child1", "child2", "child3"]}},
-    {{"label": "branch 3", "children": ["child1", "child2", "child3"]}}
+    {{"label": "branch name", "children": ["item 1", "item 2", "item 3"]}},
+    {{"label": "branch name", "children": ["item 1", "item 2", "item 3"]}},
+    {{"label": "branch name", "children": ["item 1", "item 2", "item 3"]}}
   ]
 }}
 
-Context:
+Document context:
 {context}""",
             model="llama-3.1-8b-instant",
-            json_mode=True
+            json_mode=False   # ← plain text, we parse manually
         )
 
-        mindmap = None
-        try:
-            cleaned = mindmap_raw.replace('```json', '').replace('```', '').strip()
-            mindmap = json.loads(cleaned)
-            if "central" not in mindmap or not isinstance(mindmap.get("branches"), list):
-                raise ValueError("bad structure")
-        except Exception:
-            mindmap = {
-                "central": "Document Overview",
-                "branches": [
-                    {"label": "Key Topics",      "children": ["Topic 1", "Topic 2", "Topic 3"]},
-                    {"label": "Main Arguments",  "children": ["Argument 1", "Argument 2", "Argument 3"]},
-                    {"label": "Implications",    "children": ["Implication 1", "Implication 2", "Implication 3"]},
-                ]
-            }
+        # Extract topic from summary for a meaningful fallback
+        topic_fallback = summary.split('.')[0].strip()[:40] if summary else "Document Overview"
+        mindmap = _parse_mindmap(mindmap_raw, topic_fallback)
 
-        # ── 4. Suggested debate questions (document-specific) ─────────────────
-        # Uses the summary (already generated) as grounding so the LLM
-        # stays anchored to THIS document's actual topic, not UBI or any other example.
+        # ── 4. Suggested debate questions ─────────────────────────────────────
+        # json_mode=False — same reason as mindmap, safer to parse manually
         questions_raw = call_groq_api(
             f"""Generate exactly 4 debate questions that are specific to the document described below.
 
 Rules:
-- Each question MUST reference a concrete topic, claim, policy, person, data point, or concept from this specific document
-- Questions must be genuinely debatable — not simple factual lookups
-- Do NOT write generic questions like "What are the main arguments?" or "What are the weaknesses?"
+- Each question MUST reference a concrete topic, claim, or concept from THIS document
+- Questions must be genuinely debatable, not factual lookups
+- Do NOT write generic questions like "What are the main arguments?"
 - Each question should open a different angle of debate
 
-Document summary (use this to understand the topic):
+Document summary:
 {summary}
 
-Document content (use this for specific details):
+Document content:
 {context}
 
-Return ONLY a JSON array of 4 strings, no markdown, no explanation:
+Return ONLY a JSON array of 4 strings:
 ["question 1", "question 2", "question 3", "question 4"]""",
             model="llama-3.1-8b-instant",
-            json_mode=True
+            json_mode=False   # ← plain text, we parse manually
         )
 
         suggested_questions = _parse_json_list(questions_raw, fallback=[
