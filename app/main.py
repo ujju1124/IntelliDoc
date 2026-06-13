@@ -28,6 +28,7 @@ app.add_middleware(
         # Production — Vercel frontend URLs
         "https://intellidoc.vercel.app",
         "https://intelli-doc.vercel.app",
+        "https://intelli-doc-dusky.vercel.app",
         # Allow all Vercel preview URLs for your project
         "https://*.vercel.app",
     ],
