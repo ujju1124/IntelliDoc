@@ -56,17 +56,21 @@ Summary:"""
         
         summary = call_groq_api(summary_prompt, model="llama-3.1-8b-instant")
         
-        # Step 2: Generate key insights
-        insights_prompt = f"""Extract exactly 5 key insights from this document.
-Return ONLY a valid JSON array of strings, nothing else.
-No markdown, no backticks, no explanation, no preamble.
+        # Step 2: Generate key insights with improved prompt
+        insights_prompt = f"""Based on this document, provide exactly 5 key insights as a JSON array.
 
-Example output: ["insight 1", "insight 2", "insight 3", "insight 4", "insight 5"]
+Document:
+{context}
 
-Context:
-{context}"""
+Return format (JSON array only):
+["insight 1", "insight 2", "insight 3", "insight 4", "insight 5"]
+
+JSON:"""
         
         insights_response = call_groq_api(insights_prompt, model="llama-3.1-8b-instant", json_mode=True)
+        
+        # Debug logging
+        print(f"[DEBUG] Raw insights response: {insights_response[:200]}")
         
         # Parse insights JSON with robust fallback handling
         insights = []
@@ -79,13 +83,29 @@ Context:
             
             # Handle different possible JSON formats
             if isinstance(insights_data, dict):
-                insights = insights_data.get("insights", insights_data.get("items", []))
+                # Check multiple possible keys the LLM might use
+                insights = insights_data.get("insights", 
+                          insights_data.get("items", 
+                          insights_data.get("key_insights",
+                          insights_data.get("keyInsights",  # Added this!
+                          insights_data.get("results", [])))))
             elif isinstance(insights_data, list):
                 insights = insights_data
             else:
                 insights = []
+                print(f"[DEBUG] Unexpected JSON type: {type(insights_data)}")
                 
-        except json.JSONDecodeError:
+        except json.JSONDecodeError as e:
+            print(f"[DEBUG] JSON decode error: {str(e)}")
+            print(f"[DEBUG] Attempted to parse: {cleaned_response[:200]}")
+            
+            # Step 3: Fallback - split by newline and clean up
+            lines = insights_response.strip().split('\n')
+            insights = []
+            for line in lines:
+                cleaned = line.strip().strip('-').strip('*').strip('"').strip("'").strip()
+                if cleaned and len(cleaned) > 10:  # Ignore very short lines
+                    insights.append(cleaned)
             # Step 3: Fallback - split by newline and clean up
             lines = insights_response.strip().split('\n')
             insights = []
