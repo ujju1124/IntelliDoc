@@ -7,6 +7,7 @@ venv/
 .venv/
 node_modules/
 .vscode/
+frontend/.env.local
 
 # Nested repo - kept locally as reference only
 Conversational_RAG/
