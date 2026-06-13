@@ -4,6 +4,7 @@ python-multipart
 pydantic
 pydantic-settings
 python-dotenv
+fastembed
 groq
 langgraph
 pinecone

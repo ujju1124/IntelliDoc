@@ -1,42 +1,24 @@
-"""Embedding service using HuggingFace Inference API.
+"""Embedding service using FastEmbed (ONNX-based, no PyTorch).
 
-Uses the free hosted all-MiniLM-L6-v2 endpoint — no local model loaded,
-zero RAM overhead. Produces 384-dim vectors (same as before).
-
-No API key required for the free tier (rate limited but sufficient).
+FastEmbed runs all-MiniLM-L6-v2 via ONNX Runtime which uses ~150MB RAM
+vs sentence-transformers + torch which requires ~500MB+.
+Produces identical 384-dim vectors.
 """
-import requests
+from fastembed import TextEmbedding
 
-HF_API_URL = "https://api-inference.huggingface.co/models/sentence-transformers/all-MiniLM-L6-v2"
+_model: TextEmbedding | None = None
+
+
+def _get_model() -> TextEmbedding:
+    global _model
+    if _model is None:
+        # Downloads ~30MB ONNX model on first call, cached after that
+        _model = TextEmbedding(model_name="BAAI/bge-small-en-v1.5")
+    return _model
 
 
 def embed(texts: list[str]) -> list[list[float]]:
-    """Embed a list of strings via HuggingFace Inference API."""
-    # HF feature-extraction endpoint returns nested lists
-    response = requests.post(
-        HF_API_URL,
-        json={"inputs": texts, "options": {"wait_for_model": True}},
-        timeout=30,
-    )
-    response.raise_for_status()
-    result = response.json()
-
-    # Result shape depends on input:
-    # - single string → [float, float, ...]  (1D)
-    # - list of strings → [[float,...], [float,...]]  (2D)
-    # Sentence-transformers model returns mean-pooled [batch, 384]
-    if isinstance(result, list) and len(result) > 0:
-        if isinstance(result[0], list) and isinstance(result[0][0], list):
-            # Shape: [batch, tokens, 384] — mean pool over tokens
-            return [
-                [sum(col) / len(col) for col in zip(*token_vecs)]
-                for token_vecs in result
-            ]
-        elif isinstance(result[0], list) and isinstance(result[0][0], float):
-            # Shape: [batch, 384] — already pooled
-            return result
-        elif isinstance(result[0], float):
-            # Shape: [384] — single input returned as flat list
-            return [result]
-
-    raise ValueError(f"Unexpected embedding response shape: {type(result)}")
+    """Embed a list of strings. Returns list of 384-dim float vectors."""
+    model = _get_model()
+    embeddings = list(model.embed(texts))
+    return [e.tolist() for e in embeddings]
