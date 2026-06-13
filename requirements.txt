@@ -1,15 +1,36 @@
-fastapi>=0.109.0
-uvicorn>=0.27.0
-python-multipart>=0.0.6
-pydantic>=2.10.0
-pydantic-settings>=2.7.0
-python-dotenv>=1.0.0
-sentence-transformers>=2.3.1
-groq>=0.4.2
-pinecone>=9.0.0
-redis>=5.0.1
-sqlalchemy>=2.0.25
-pdfplumber>=0.10.3
-nltk>=3.8.1
-requests>=2.31.0
-langgraph>=0.2.0
+# ── Core web framework ────────────────────────────────────────────────────────
+fastapi==0.115.6
+uvicorn==0.32.1
+python-multipart==0.0.12
+
+# ── Data validation ───────────────────────────────────────────────────────────
+pydantic==2.10.4
+pydantic-settings==2.7.0
+python-dotenv==1.0.1
+
+# ── PyTorch CPU-only — must come before sentence-transformers
+# This prevents pip from pulling in 1.5GB+ of CUDA/GPU packages
+torch==2.2.2+cpu --extra-index-url https://download.pytorch.org/whl/cpu
+
+# ── Embeddings ────────────────────────────────────────────────────────────────
+sentence-transformers==2.7.0
+
+# ── LLM / Agents ─────────────────────────────────────────────────────────────
+groq==0.11.0
+langgraph==0.2.28
+
+# ── Vector DB ─────────────────────────────────────────────────────────────────
+pinecone==5.0.1
+
+# ── Cache / Memory ────────────────────────────────────────────────────────────
+redis==5.0.8
+
+# ── Database ──────────────────────────────────────────────────────────────────
+sqlalchemy==2.0.36
+
+# ── Document processing ───────────────────────────────────────────────────────
+pdfplumber==0.11.4
+nltk==3.9.1
+
+# ── HTTP ──────────────────────────────────────────────────────────────────────
+requests==2.32.3
