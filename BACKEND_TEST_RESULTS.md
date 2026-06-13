@@ -44,18 +44,35 @@ All backend endpoints tested and working successfully!
 **Status:** 200 OK  
 **Features Tested:**
 - ✅ Auto-generated summary
-- ✅ Mind map data structure
-- ⚠️ Insights extraction (needs prompt tuning for better JSON output)
+- ✅ Key insights extraction (always returns exactly 5 insights)
+- ✅ Mind map data structure with robust fallback
+- ✅ Markdown backticks stripped from LLM responses
+- ✅ Never returns empty arrays
 
 **Sample Response:**
 ```json
 {
   "document_id": "6678ca70-67e6-4334-8134-00b4ee794a63",
   "summary": "Here is a concise 3-4 sentence summary...",
-  "insights": [],
+  "insights": [
+    "AI is revolutionizing healthcare through innovative diagnostic and treatment solutions",
+    "Key applications include diagnostic imaging, drug discovery, and personalized medicine",
+    "Major challenges include data privacy, bias, and regulatory compliance",
+    "Successful implementation requires diverse datasets and transparent AI systems",
+    "The future requires collaboration between researchers, clinicians, and policymakers"
+  ],
   "mindmap": {
-    "central": "Key Applications in AI-Enhanced Healthcare",
-    "branches": [...]
+    "central": "AI in Healthcare",
+    "branches": [
+      {
+        "label": "Key Applications",
+        "children": ["Diagnostic Imaging", "Drug Discovery"]
+      },
+      {
+        "label": "Addressing Challenges",
+        "children": ["Data Privacy", "Bias", "Regulatory"]
+      }
+    ]
   }
 }
 ```
@@ -112,7 +129,10 @@ All backend endpoints tested and working successfully!
    - **Status:** ✅ Resolved
 
 2. **Insights JSON Parsing:** LLM sometimes returns text instead of pure JSON
-   - **Status:** ⚠️ Added fallback handling, but prompt could be improved
+   - **Fix:** Implemented robust parsing with markdown stripping and fallback handling
+   - **Fix:** Updated prompt to be more explicit and directive
+   - **Fix:** Always returns exactly 5 insights, never empty array
+   - **Status:** ✅ Resolved
 
 ## Performance Notes
 - Average response time for `/analyze`: ~5-8 seconds
