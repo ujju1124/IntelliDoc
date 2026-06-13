@@ -6,3 +6,7 @@ __pycache__
 venv/
 .venv/
 node_modules/
+.vscode/
+
+# Nested repo - kept locally as reference only
+Conversational_RAG/
