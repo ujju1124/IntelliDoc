@@ -29,7 +29,19 @@ const loadSessions = () => {
 
 const saveSessions = (sessions) => {
   try {
-    localStorage.setItem(LS_SESSIONS_KEY, JSON.stringify(sessions));
+    // Cap: keep at most 100 sessions, drop the oldest first
+    const capped = sessions.slice(0, 100);
+    const serialised = JSON.stringify(capped);
+
+    // Guard against exceeding ~4MB to leave headroom in the 5MB localStorage limit
+    if (serialised.length > 4 * 1024 * 1024) {
+      // Trim oldest half and try again
+      const trimmed = capped.slice(0, Math.floor(capped.length / 2));
+      localStorage.setItem(LS_SESSIONS_KEY, JSON.stringify(trimmed));
+      console.warn('[Sessions] localStorage near limit — trimmed to', trimmed.length, 'sessions');
+    } else {
+      localStorage.setItem(LS_SESSIONS_KEY, serialised);
+    }
   } catch (e) {
     console.error('Error saving sessions:', e);
   }

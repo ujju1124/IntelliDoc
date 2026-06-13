@@ -14,6 +14,7 @@ class Document(Base):
     upload_time = Column(DateTime, default=datetime.utcnow)
     chunk_count = Column(Integer, nullable=False)
     strategy = Column(String, nullable=False)
+    file_hash = Column(String, nullable=True, index=True)  # SHA-256 for de-duplication
     
     # Relationship to chat sessions
     sessions = relationship("ChatSession", back_populates="document")

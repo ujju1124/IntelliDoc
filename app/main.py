@@ -2,10 +2,13 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers import ingest, chat, sessions, analyze, debate
-from app.core.db import engine, Base
+from app.core.db import engine, Base, run_migrations
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
+
+# Apply additive migrations (e.g. new columns on existing tables)
+run_migrations()
 
 # Initialize FastAPI app
 app = FastAPI(
