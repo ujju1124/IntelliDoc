@@ -3,8 +3,8 @@ from pinecone import Pinecone, ServerlessSpec
 from app.core.config import settings
 
 # Embedding dimension must match the model used in app/core/embeddings.py
-# nomic-embed-text-v1.5 (Groq API) → 768 dimensions
-VECTOR_DIM = 768
+# HuggingFace all-MiniLM-L6-v2 → 384 dimensions
+VECTOR_DIM = 384
 
 # Initialize Pinecone client
 pc = Pinecone(api_key=settings.PINECONE_API_KEY)

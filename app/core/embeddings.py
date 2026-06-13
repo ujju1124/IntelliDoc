@@ -1,44 +1,42 @@
-"""Embedding service using Groq API — no local model, zero RAM overhead.
+"""Embedding service using HuggingFace Inference API.
 
-Uses Groq's nomic-embed-text-v1.5 which produces 768-dim vectors.
-NOTE: Pinecone index dimension must match — 768 for this model.
+Uses the free hosted all-MiniLM-L6-v2 endpoint — no local model loaded,
+zero RAM overhead. Produces 384-dim vectors (same as before).
 
-If you previously used all-MiniLM-L6-v2 (384-dim) locally, you need to
-re-create your Pinecone index with dimension=768, or re-ingest all documents.
+No API key required for the free tier (rate limited but sufficient).
 """
-from groq import Groq
-from app.core.config import settings
+import requests
 
-_client: Groq | None = None
-
-EMBED_MODEL = "nomic-embed-text-v1.5"
-EMBED_DIM = 768
-
-
-def _get_client() -> Groq:
-    global _client
-    if _client is None:
-        _client = Groq(api_key=settings.GROQ_API_KEY)
-    return _client
+HF_API_URL = "https://api-inference.huggingface.co/models/sentence-transformers/all-MiniLM-L6-v2"
 
 
 def embed(texts: list[str]) -> list[list[float]]:
-    """Embed a list of strings using Groq API. Returns list of float vectors."""
-    client = _get_client()
+    """Embed a list of strings via HuggingFace Inference API."""
+    # HF feature-extraction endpoint returns nested lists
+    response = requests.post(
+        HF_API_URL,
+        json={"inputs": texts, "options": {"wait_for_model": True}},
+        timeout=30,
+    )
+    response.raise_for_status()
+    result = response.json()
 
-    # Groq embedding API accepts up to 2048 texts per request
-    # but we batch in 100s to stay safe
-    all_embeddings = []
-    batch_size = 100
+    # Result shape depends on input:
+    # - single string → [float, float, ...]  (1D)
+    # - list of strings → [[float,...], [float,...]]  (2D)
+    # Sentence-transformers model returns mean-pooled [batch, 384]
+    if isinstance(result, list) and len(result) > 0:
+        if isinstance(result[0], list) and isinstance(result[0][0], list):
+            # Shape: [batch, tokens, 384] — mean pool over tokens
+            return [
+                [sum(col) / len(col) for col in zip(*token_vecs)]
+                for token_vecs in result
+            ]
+        elif isinstance(result[0], list) and isinstance(result[0][0], float):
+            # Shape: [batch, 384] — already pooled
+            return result
+        elif isinstance(result[0], float):
+            # Shape: [384] — single input returned as flat list
+            return [result]
 
-    for i in range(0, len(texts), batch_size):
-        batch = texts[i:i + batch_size]
-        response = client.embeddings.create(
-            model=EMBED_MODEL,
-            input=batch,
-        )
-        # response.data is a list of EmbeddingObject sorted by index
-        batch_embeddings = [item.embedding for item in sorted(response.data, key=lambda x: x.index)]
-        all_embeddings.extend(batch_embeddings)
-
-    return all_embeddings
+    raise ValueError(f"Unexpected embedding response shape: {type(result)}")
