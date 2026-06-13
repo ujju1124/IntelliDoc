@@ -11,7 +11,7 @@ import { copyToClipboard } from '../utils/helpers';
 const UploadPage = () => {
   const navigate = useNavigate();
   const toast = useToast();
-  const { setCurrentDocument } = useAppContext();
+  const { setCurrentDocument, setAnalysisData } = useAppContext();
   const {
     file,
     strategy,
@@ -28,6 +28,8 @@ const UploadPage = () => {
   const onUpload = async () => {
     const uploadResult = await handleUpload();
     if (uploadResult) {
+      // Clear old analysis data when uploading new document
+      setAnalysisData(null);
       setCurrentDocument(uploadResult);
       toast.success('Document uploaded successfully!');
     }
