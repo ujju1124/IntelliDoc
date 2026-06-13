@@ -1,23 +1,28 @@
-"""Pinecone vector database client initialization."""
+"""Pinecone vector database client — lazy initialization.
+
+Index is connected on first use, not at import time.
+This prevents startup crashes if Pinecone is slow to respond.
+"""
 from pinecone import Pinecone, ServerlessSpec
 from app.core.config import settings
 
-# Embedding dimension must match the model used in app/core/embeddings.py
-# HuggingFace all-MiniLM-L6-v2 → 384 dimensions
-VECTOR_DIM = 384
+VECTOR_DIM = 384  # BAAI/bge-small-en-v1.5 output dimension
 
-# Initialize Pinecone client
-pc = Pinecone(api_key=settings.PINECONE_API_KEY)
+_index = None
 
 
 def get_pinecone_index():
-    """Get or create Pinecone index with correct dimensions."""
+    """Get Pinecone index, creating it if it doesn't exist."""
+    global _index
+    if _index is not None:
+        return _index
+
+    pc = Pinecone(api_key=settings.PINECONE_API_KEY)
     index_name = settings.PINECONE_INDEX_NAME
 
     existing = {idx.name: idx for idx in pc.list_indexes()}
 
     if index_name not in existing:
-        # Create new index with correct dimensions
         pc.create_index(
             name=index_name,
             dimension=VECTOR_DIM,
@@ -25,16 +30,26 @@ def get_pinecone_index():
             spec=ServerlessSpec(cloud="aws", region="us-east-1")
         )
     else:
-        # Verify dimension matches — if not, warn but continue
-        # (user must delete and recreate the index manually if dimension changed)
-        existing_dim = existing[index_name].dimension
-        if existing_dim != VECTOR_DIM:
-            print(f"[WARNING] Pinecone index '{index_name}' has dimension {existing_dim} "
-                  f"but embeddings model produces {VECTOR_DIM}-dim vectors. "
-                  f"Delete and recreate the index in Pinecone dashboard.")
+        existing_dim = getattr(existing[index_name], 'dimension', None)
+        if existing_dim and existing_dim != VECTOR_DIM:
+            print(f"[WARNING] Pinecone index dimension mismatch: "
+                  f"index={existing_dim}, model={VECTOR_DIM}. "
+                  f"Delete and recreate the index.")
 
-    return pc.Index(index_name)
+    _index = pc.Index(index_name)
+    return _index
 
 
-# Global index instance — initialised once at module load
-pinecone_index = get_pinecone_index()
+# Module-level alias — lazily resolved on first call
+class _LazyIndex:
+    def __getattr__(self, name):
+        return getattr(get_pinecone_index(), name)
+
+    def query(self, *args, **kwargs):
+        return get_pinecone_index().query(*args, **kwargs)
+
+    def upsert(self, *args, **kwargs):
+        return get_pinecone_index().upsert(*args, **kwargs)
+
+
+pinecone_index = _LazyIndex()
