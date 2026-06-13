@@ -1,7 +1,7 @@
 """Main FastAPI application entry point."""
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import ingest, chat, sessions, analyze, debate
+from app.routers import ingest, chat, sessions, analyze, debate, documents
 from app.core.db import engine, Base, run_migrations
 
 # Create database tables
@@ -21,8 +21,8 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173",  # Vite default port
-        "http://localhost:3000",  # React default port
+        "http://localhost:5173",
+        "http://localhost:3000",
         "http://127.0.0.1:5173",
         "http://127.0.0.1:3000"
     ],
@@ -32,11 +32,12 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(ingest.router, tags=["Ingestion"])
-app.include_router(chat.router, tags=["Chat"])
-app.include_router(sessions.router, tags=["Sessions"])
-app.include_router(analyze.router, tags=["Analysis"])
-app.include_router(debate.router, tags=["Debate"])
+app.include_router(ingest.router,    tags=["Ingestion"])
+app.include_router(chat.router,      tags=["Chat"])
+app.include_router(sessions.router,  tags=["Sessions"])
+app.include_router(analyze.router,   tags=["Analysis"])
+app.include_router(debate.router,    tags=["Debate"])
+app.include_router(documents.router, tags=["Documents"])
 
 
 @app.get("/")
@@ -45,5 +46,5 @@ async def root():
     return {
         "status": "online",
         "message": "IntelliDoc API - Multi-Agent Document Intelligence Platform",
-        "endpoints": ["/ingest", "/chat", "/sessions", "/analyze", "/debate"]
+        "endpoints": ["/ingest", "/chat", "/sessions", "/analyze", "/debate", "/documents"]
     }

@@ -9,193 +9,176 @@ router = APIRouter()
 
 
 class AnalyzeRequest(BaseModel):
-    """Request model for document analysis."""
     document_id: str
 
 
 class AnalyzeResponse(BaseModel):
-    """Response model for document analysis."""
     document_id: str
     summary: str
     insights: list
     mindmap: dict
+    suggested_questions: list  # doc-specific debate starters
 
+
+# ─── helpers ─────────────────────────────────────────────────────────────────
+
+def _parse_json_list(raw: str, fallback: list) -> list:
+    """Strip markdown fences, parse JSON, return list or fallback."""
+    cleaned = raw.replace('```json', '').replace('```', '').strip()
+    try:
+        data = json.loads(cleaned)
+        if isinstance(data, list):
+            return data
+        if isinstance(data, dict):
+            for key in ("items", "insights", "key_insights", "keyInsights",
+                        "questions", "suggested_questions", "results"):
+                if key in data and isinstance(data[key], list):
+                    return data[key]
+    except (json.JSONDecodeError, ValueError):
+        # line-by-line fallback
+        lines = []
+        for line in raw.strip().split('\n'):
+            c = line.strip().lstrip('-*0123456789.)').strip('"\'').strip()
+            if c and len(c) > 10:
+                lines.append(c)
+        if lines:
+            return lines
+    return fallback
+
+
+# ─── endpoint ─────────────────────────────────────────────────────────────────
 
 @router.post("/analyze", response_model=AnalyzeResponse, tags=["Analysis"])
 async def analyze_document(request: AnalyzeRequest):
     """
     Generate intelligence dashboard for a document:
     - Auto summary
-    - Key insights
+    - Key insights (always exactly 5)
     - Mind map visualization data
+    - 4 document-specific suggested debate questions
     """
-    
     try:
-        # Retrieve relevant chunks from Pinecone with a general query
         retrieved_chunks = retrieve_relevant_chunks(
             user_message="main topics and key points",
             document_id=request.document_id,
             top_k=10
         )
-        
+
         if not retrieved_chunks:
             raise HTTPException(
                 status_code=404,
                 detail=f"No content found for document_id: {request.document_id}"
             )
-        
+
         context = "\n".join(retrieved_chunks)
-        
-        # Step 1: Generate summary
-        summary_prompt = f"""Provide a concise 3-4 sentence summary of this document.
+
+        # ── 1. Summary ────────────────────────────────────────────────────────
+        summary = call_groq_api(
+            f"""Provide a concise 3-4 sentence summary of this document.
 
 Context:
 {context}
 
-Summary:"""
-        
-        summary = call_groq_api(summary_prompt, model="llama-3.1-8b-instant")
-        
-        # Step 2: Generate key insights with improved prompt
-        insights_prompt = f"""Based on this document, provide exactly 5 key insights as a JSON array.
+Summary:""",
+            model="llama-3.1-8b-instant"
+        )
+
+        # ── 2. Insights ───────────────────────────────────────────────────────
+        insights_raw = call_groq_api(
+            f"""Based on this document, provide exactly 5 key insights as a JSON array of strings.
 
 Document:
 {context}
 
-Return format (JSON array only):
-["insight 1", "insight 2", "insight 3", "insight 4", "insight 5"]
+Return format (JSON array only, no markdown):
+["insight 1", "insight 2", "insight 3", "insight 4", "insight 5"]""",
+            model="llama-3.1-8b-instant",
+            json_mode=True
+        )
+        print(f"[DEBUG] Raw insights: {insights_raw[:200]}")
 
-JSON:"""
-        
-        insights_response = call_groq_api(insights_prompt, model="llama-3.1-8b-instant", json_mode=True)
-        
-        # Debug logging
-        print(f"[DEBUG] Raw insights response: {insights_response[:200]}")
-        
-        # Parse insights JSON with robust fallback handling
-        insights = []
-        try:
-            # Step 1: Strip markdown backticks if present
-            cleaned_response = insights_response.replace('```json', '').replace('```', '').strip()
-            
-            # Step 2: Try JSON parse
-            insights_data = json.loads(cleaned_response)
-            
-            # Handle different possible JSON formats
-            if isinstance(insights_data, dict):
-                # Check multiple possible keys the LLM might use
-                insights = insights_data.get("insights", 
-                          insights_data.get("items", 
-                          insights_data.get("key_insights",
-                          insights_data.get("keyInsights",  # Added this!
-                          insights_data.get("results", [])))))
-            elif isinstance(insights_data, list):
-                insights = insights_data
-            else:
-                insights = []
-                print(f"[DEBUG] Unexpected JSON type: {type(insights_data)}")
-                
-        except json.JSONDecodeError as e:
-            print(f"[DEBUG] JSON decode error: {str(e)}")
-            print(f"[DEBUG] Attempted to parse: {cleaned_response[:200]}")
-            
-            # Step 3: Fallback - split by newline and clean up
-            lines = insights_response.strip().split('\n')
-            insights = []
-            for line in lines:
-                cleaned = line.strip().strip('-').strip('*').strip('"').strip("'").strip()
-                if cleaned and len(cleaned) > 10:  # Ignore very short lines
-                    insights.append(cleaned)
-            # Step 3: Fallback - split by newline and clean up
-            lines = insights_response.strip().split('\n')
-            insights = []
-            for line in lines:
-                cleaned = line.strip().strip('-').strip('*').strip('"').strip("'").strip()
-                if cleaned and len(cleaned) > 10:  # Ignore very short lines
-                    insights.append(cleaned)
-        
-        # Step 4: Never return empty array - always return something
-        if not insights or len(insights) == 0:
-            insights = [
-                "This document contains key information worth exploring further",
-                "Multiple important concepts are discussed in this document",
-                "The document presents several noteworthy perspectives",
-                "Key themes emerge throughout the document content",
-                "Further analysis of this document is recommended"
-            ]
-        
-        # Ensure we have exactly 5 insights (pad or truncate)
-        if len(insights) < 5:
-            # Pad with generic insights if needed
-            while len(insights) < 5:
-                insights.append(f"Additional insight from the document (point {len(insights) + 1})")
-        elif len(insights) > 5:
-            # Truncate to 5
-            insights = insights[:5]
-        
-        # Step 3: Generate mind map data
-        mindmap_prompt = f"""Create a mind map structure for this document as JSON.
-Return ONLY valid JSON, nothing else.
-No markdown, no backticks, no explanation, no preamble.
+        insights = _parse_json_list(insights_raw, fallback=[
+            "This document contains key information worth exploring further",
+            "Multiple important concepts are discussed in this document",
+            "The document presents several noteworthy perspectives",
+            "Key themes emerge throughout the document content",
+            "Further analysis of this document is recommended",
+        ])
+
+        # Normalise to exactly 5
+        while len(insights) < 5:
+            insights.append(f"Additional insight from the document (point {len(insights) + 1})")
+        insights = insights[:5]
+
+        # ── 3. Mind map ───────────────────────────────────────────────────────
+        mindmap_raw = call_groq_api(
+            f"""Create a mind map structure for this document as JSON.
+Return ONLY valid JSON, no markdown, no backticks.
 
 Required format:
 {{
   "central": "main topic",
   "branches": [
     {{"label": "branch 1", "children": ["child1", "child2", "child3"]}},
-    {{"label": "branch 2", "children": ["child1", "child2", "child3"]}}
+    {{"label": "branch 2", "children": ["child1", "child2", "child3"]}},
+    {{"label": "branch 3", "children": ["child1", "child2", "child3"]}}
   ]
 }}
 
 Context:
-{context}"""
-        
-        mindmap_response = call_groq_api(mindmap_prompt, model="llama-3.1-8b-instant", json_mode=True)
-        
-        # Parse mindmap JSON with robust fallback handling
+{context}""",
+            model="llama-3.1-8b-instant",
+            json_mode=True
+        )
+
         mindmap = None
         try:
-            # Step 1: Strip markdown backticks if present
-            cleaned_response = mindmap_response.replace('```json', '').replace('```', '').strip()
-            
-            # Step 2: Try JSON parse
-            mindmap = json.loads(cleaned_response)
-            
-            # Step 3: Validate structure
-            if "central" not in mindmap or "branches" not in mindmap:
-                raise ValueError("Invalid mindmap structure")
-                
-            # Ensure branches is a list
-            if not isinstance(mindmap["branches"], list):
-                raise ValueError("Branches must be a list")
-                
-        except (json.JSONDecodeError, ValueError):
-            # Step 4: Fallback mindmap structure - never return None
+            cleaned = mindmap_raw.replace('```json', '').replace('```', '').strip()
+            mindmap = json.loads(cleaned)
+            if "central" not in mindmap or not isinstance(mindmap.get("branches"), list):
+                raise ValueError("bad structure")
+        except Exception:
             mindmap = {
                 "central": "Document Overview",
                 "branches": [
-                    {
-                        "label": "Key Applications",
-                        "children": ["Diagnostic Imaging", "Drug Discovery", "Personalized Medicine"]
-                    },
-                    {
-                        "label": "Challenges",
-                        "children": ["Data Privacy", "Bias and Fairness", "Regulatory Hurdles"]
-                    },
-                    {
-                        "label": "Future Directions",
-                        "children": ["Diverse Datasets", "Transparent Systems", "Interdisciplinary Collaboration"]
-                    }
+                    {"label": "Key Topics",      "children": ["Topic 1", "Topic 2", "Topic 3"]},
+                    {"label": "Main Arguments",  "children": ["Argument 1", "Argument 2", "Argument 3"]},
+                    {"label": "Implications",    "children": ["Implication 1", "Implication 2", "Implication 3"]},
                 ]
             }
-        
+
+        # ── 4. Suggested debate questions (document-specific) ─────────────────
+        questions_raw = call_groq_api(
+            f"""Based on this document, generate exactly 4 thought-provoking debate questions that would spark interesting discussion.
+Questions should be specific to the document content, not generic.
+
+Document:
+{context}
+
+Return ONLY a JSON array of 4 question strings, no markdown:
+["question 1", "question 2", "question 3", "question 4"]""",
+            model="llama-3.1-8b-instant",
+            json_mode=True
+        )
+
+        suggested_questions = _parse_json_list(questions_raw, fallback=[
+            "What are the main arguments presented in this document?",
+            "What are the key weaknesses in this document's reasoning?",
+            "What are the broader implications of this document's conclusions?",
+            "What alternative perspectives are missing from this document?",
+        ])[:4]
+
+        while len(suggested_questions) < 4:
+            suggested_questions.append("What are the broader implications of this document?")
+
         return AnalyzeResponse(
             document_id=request.document_id,
             summary=summary,
             insights=insights,
-            mindmap=mindmap
+            mindmap=mindmap,
+            suggested_questions=suggested_questions,
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:

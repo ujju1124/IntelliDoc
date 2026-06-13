@@ -4,6 +4,7 @@ import { ToastProvider } from './components/Toast';
 import UploadPage from './pages/UploadPage';
 import DashboardPage from './pages/DashboardPage';
 import DebatePage from './pages/DebatePage';
+import HistoryPage from './pages/HistoryPage';
 import NotFound from './pages/NotFound';
 
 function App() {
@@ -12,10 +13,11 @@ function App() {
       <ToastProvider>
         <AppContextProvider>
           <Routes>
-            <Route path="/" element={<UploadPage />} />
+            <Route path="/"          element={<UploadPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/debate" element={<DebatePage />} />
-            <Route path="*" element={<NotFound />} />
+            <Route path="/debate"    element={<DebatePage />} />
+            <Route path="/history"   element={<HistoryPage />} />
+            <Route path="*"          element={<NotFound />} />
           </Routes>
         </AppContextProvider>
       </ToastProvider>

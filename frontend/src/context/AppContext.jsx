@@ -65,7 +65,6 @@ export const AppContextProvider = ({ children }) => {
       return raw ? JSON.parse(raw) : null;
     } catch { return null; }
   });
-
   // All saved debate sessions
   const [allSessions, setAllSessions] = useState(() => loadSessions());
 

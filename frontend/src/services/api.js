@@ -73,4 +73,47 @@ export const sendDebateMessage = async (sessionId, userMessage, documentId) => {
   }
 };
 
+/**
+ * Send a message to the conversational chat (simple RAG, no agents)
+ */
+export const sendChatMessage = async (sessionId, userMessage, documentId) => {
+  try {
+    const response = await api.post('/chat', {
+      session_id: sessionId,
+      user_message: userMessage,
+      document_id: documentId,
+    });
+    return response.data;
+  } catch (error) {
+    const message = error.response?.data?.detail || 'Failed to send chat message';
+    throw new Error(message);
+  }
+};
+
+/**
+ * Fetch all ingested documents
+ */
+export const fetchDocuments = async () => {
+  try {
+    const response = await api.get('/documents');
+    return response.data;
+  } catch (error) {
+    const message = error.response?.data?.detail || 'Failed to fetch documents';
+    throw new Error(message);
+  }
+};
+
+/**
+ * Delete a document record
+ */
+export const deleteDocument = async (documentId) => {
+  try {
+    const response = await api.delete(`/documents/${documentId}`);
+    return response.data;
+  } catch (error) {
+    const message = error.response?.data?.detail || 'Failed to delete document';
+    throw new Error(message);
+  }
+};
+
 export default api;

@@ -9,6 +9,7 @@ import { useToast } from '../components/Toast';
 import { useAppContext } from '../context/AppContext';
 import useDebate from '../hooks/useDebate';
 import { truncateText } from '../utils/helpers';
+import { exportDebateAsMarkdown } from '../utils/exportDebate';
 
 const DebatePage = () => {
   const navigate = useNavigate();
@@ -27,7 +28,6 @@ const DebatePage = () => {
     activeSessionId,
     isActiveSessionReadOnly,
   } = useAppContext();
-
   const { messages, loading, error, sendMessage, reset, loadMessages } = useDebate();
   const [input, setInput] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -90,18 +90,27 @@ const DebatePage = () => {
     toast.success('New session started');
   };
 
+  const handleExport = () => {
+    if (messages.length === 0) { toast.error('No messages to export'); return; }
+    const session = allSessions.find(s => s.id === activeSessionId);
+    exportDebateAsMarkdown(messages, session?.title, currentDocument?.filename);
+    toast.success('Debate exported as Markdown');
+  };
+
   const handleSuggestedQuestion = (q) => {
     setInput(q);
     textareaRef.current?.focus();
   };
 
-  // ── Data ───────────────────────────────────────────────────────────────────
-  const suggestedQuestions = [
-    'What are the main arguments?',
-    'What are the weaknesses?',
-    'Summarize the key points',
-    "What's the opposing view?",
-  ];
+  // Use doc-specific questions from analysis, fall back to generics
+  const suggestedQuestions = analysisData?.suggested_questions?.length
+    ? analysisData.suggested_questions
+    : [
+        'What are the main arguments?',
+        'What are the weaknesses?',
+        'Summarize the key points',
+        "What's the opposing view?",
+      ];
 
   const agentLegend = [
     { name: 'Summarizer',       color: '#3b82f6', emoji: '🔵', role: 'Factual analysis from the document' },
@@ -175,7 +184,7 @@ const DebatePage = () => {
               </span>
             </div>
 
-            {/* Agent pills */}
+            {/* Agent pills + export */}
             <div className="hidden md:flex items-center gap-1.5 flex-shrink-0">
               {agentLegend.map(a => (
                 <span
@@ -186,6 +195,19 @@ const DebatePage = () => {
                   {a.name}
                 </span>
               ))}
+              {messages.length > 0 && !readOnly && (
+                <button
+                  onClick={handleExport}
+                  className="ml-2 flex items-center gap-1.5 px-3 py-1 rounded-lg border border-white/10 text-xs text-text-secondary hover:border-violet/40 hover:text-violet hover:bg-violet/5 transition-all"
+                  title="Export debate as Markdown"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  Export
+                </button>
+              )}
             </div>
           </div>
 
