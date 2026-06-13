@@ -5,16 +5,24 @@ import { timeAgo, truncateText } from '../utils/helpers';
 
 /**
  * ChatGPT-style sessions sidebar.
- * Shows all saved debate sessions grouped by recency.
- * Supports switch, delete, and new session.
+ * Shows ALL sessions across all documents.
+ * Sessions belonging to the current document are active (can chat).
+ * Sessions from other documents are read-only (view-only).
  */
 const SessionsSidebar = ({ onNewSession }) => {
-  const { allSessions, activeSessionId, switchSession, deleteSession } = useAppContext();
+  const { allSessions, activeSessionId, currentDocument, switchSession, deleteSession } = useAppContext();
   const [hoveredId, setHoveredId] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [filter, setFilter] = useState('all'); // 'all' | 'current'
 
-  // Group sessions: Today / Yesterday / Older
-  const grouped = groupSessions(allSessions);
+  const currentDocId = currentDocument?.document_id;
+
+  // Filter sessions
+  const visibleSessions = filter === 'current'
+    ? allSessions.filter(s => s.documentId === currentDocId)
+    : allSessions;
+
+  const grouped = groupSessions(visibleSessions);
 
   const handleSwitch = (id) => {
     if (id === activeSessionId) return;
@@ -28,17 +36,16 @@ const SessionsSidebar = ({ onNewSession }) => {
       setConfirmDelete(null);
     } else {
       setConfirmDelete(id);
-      // Auto-cancel confirmation after 3s
       setTimeout(() => setConfirmDelete(null), 3000);
     }
   };
 
   return (
     <div className="flex flex-col h-full">
-      {/* New Chat Button */}
+      {/* New Session Button */}
       <button
         onClick={onNewSession}
-        className="flex items-center gap-2 w-full px-3 py-2.5 rounded-lg border border-violet/40 text-sm font-medium text-violet hover:bg-violet/10 hover:border-violet/70 transition-all mb-4 group"
+        className="flex items-center gap-2 w-full px-3 py-2.5 rounded-lg border border-violet/40 text-sm font-medium text-violet hover:bg-violet/10 hover:border-violet/70 transition-all mb-3 group"
       >
         <svg className="w-4 h-4 group-hover:rotate-90 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -46,21 +53,43 @@ const SessionsSidebar = ({ onNewSession }) => {
         New Session
       </button>
 
+      {/* Filter tabs */}
+      <div className="flex rounded-lg overflow-hidden border border-white/10 mb-3 text-xs">
+        <button
+          onClick={() => setFilter('all')}
+          className={`flex-1 py-1.5 font-medium transition-colors ${
+            filter === 'all' ? 'bg-violet/20 text-violet' : 'text-text-secondary hover:text-text-primary'
+          }`}
+        >
+          All
+        </button>
+        <button
+          onClick={() => setFilter('current')}
+          className={`flex-1 py-1.5 font-medium transition-colors border-l border-white/10 ${
+            filter === 'current' ? 'bg-violet/20 text-violet' : 'text-text-secondary hover:text-text-primary'
+          }`}
+        >
+          This Doc
+        </button>
+      </div>
+
       {/* Session List */}
-      <div className="flex-1 overflow-y-auto space-y-4 pr-1" style={{ scrollbarWidth: 'thin' }}>
-        {allSessions.length === 0 ? (
+      <div className="flex-1 overflow-y-auto space-y-4 pr-0.5" style={{ scrollbarWidth: 'thin' }}>
+        {visibleSessions.length === 0 ? (
           <div className="text-center py-6">
             <svg className="w-8 h-8 text-text-secondary/30 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
             </svg>
-            <p className="text-xs text-text-secondary">No sessions yet</p>
+            <p className="text-xs text-text-secondary">
+              {filter === 'current' ? 'No sessions for this document yet' : 'No sessions yet'}
+            </p>
             <p className="text-xs text-text-secondary/60 mt-1">Start a debate to create one</p>
           </div>
         ) : (
           Object.entries(grouped).map(([group, sessions]) =>
             sessions.length > 0 ? (
               <div key={group}>
-                <p className="text-xs font-semibold text-text-secondary/60 uppercase tracking-wider mb-1.5 px-1">
+                <p className="text-xs font-semibold text-text-secondary/50 uppercase tracking-wider mb-1.5 px-1">
                   {group}
                 </p>
                 <div className="space-y-1">
@@ -69,6 +98,7 @@ const SessionsSidebar = ({ onNewSession }) => {
                       key={session.id}
                       session={session}
                       isActive={session.id === activeSessionId}
+                      isCurrentDoc={session.documentId === currentDocId}
                       isHovered={hoveredId === session.id}
                       confirmingDelete={confirmDelete === session.id}
                       onMouseEnter={() => setHoveredId(session.id)}
@@ -92,6 +122,7 @@ const SessionsSidebar = ({ onNewSession }) => {
 const SessionItem = ({
   session,
   isActive,
+  isCurrentDoc,
   isHovered,
   confirmingDelete,
   onMouseEnter,
@@ -100,6 +131,7 @@ const SessionItem = ({
   onDelete,
 }) => {
   const messageCount = session.messages?.length ?? 0;
+  const isReadOnly = !isCurrentDoc;
 
   return (
     <motion.div
@@ -112,41 +144,57 @@ const SessionItem = ({
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
       className={`
-        relative group flex items-start gap-2 w-full px-3 py-2.5 rounded-lg cursor-pointer
+        relative flex items-start gap-2 w-full px-3 py-2.5 rounded-lg cursor-pointer
         transition-all duration-150 text-left
         ${isActive
           ? 'bg-violet/15 border border-violet/30'
-          : 'hover:bg-white/5 border border-transparent'
+          : isReadOnly
+            ? 'hover:bg-white/3 border border-transparent opacity-70 hover:opacity-90'
+            : 'hover:bg-white/5 border border-transparent'
         }
       `}
     >
       {/* Icon */}
-      <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center mt-0.5 ${isActive ? 'bg-violet/30' : 'bg-white/5'}`}>
-        <svg className={`w-3 h-3 ${isActive ? 'text-violet' : 'text-text-secondary'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" />
-        </svg>
+      <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center mt-0.5 
+        ${isActive ? 'bg-violet/30' : isReadOnly ? 'bg-white/3' : 'bg-white/5'}`}>
+        {isReadOnly ? (
+          <svg className="w-3 h-3 text-text-secondary/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+          </svg>
+        ) : (
+          <svg className={`w-3 h-3 ${isActive ? 'text-violet' : 'text-text-secondary'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" />
+          </svg>
+        )}
       </div>
 
       {/* Text */}
       <div className="flex-1 min-w-0">
-        <p className={`text-sm font-medium truncate ${isActive ? 'text-text-primary' : 'text-text-secondary'}`}>
-          {session.title}
-        </p>
+        <div className="flex items-center gap-1.5">
+          <p className={`text-sm font-medium truncate flex-1 ${isActive ? 'text-text-primary' : 'text-text-secondary'}`}>
+            {session.title}
+          </p>
+          {/* Read-only badge */}
+          {isReadOnly && (
+            <span className="flex-shrink-0 text-[9px] px-1.5 py-0.5 rounded-full bg-white/5 text-text-secondary/50 font-medium tracking-wide">
+              VIEW
+            </span>
+          )}
+        </div>
+
         <div className="flex items-center gap-1.5 mt-0.5">
-          <svg className="w-2.5 h-2.5 text-text-secondary/50 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="w-2.5 h-2.5 text-text-secondary/40 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
-          <p className="text-xs text-text-secondary/50 truncate">
-            {truncateText(session.documentName, 18)}
+          <p className={`text-xs truncate ${isReadOnly ? 'text-text-secondary/40' : 'text-text-secondary/50'}`}>
+            {truncateText(session.documentName, 16)}
           </p>
-          <span className="text-text-secondary/30">·</span>
-          <p className="text-xs text-text-secondary/40 flex-shrink-0">
-            {messageCount}Q
-          </p>
+          <span className="text-text-secondary/25">·</span>
+          <p className="text-xs text-text-secondary/35 flex-shrink-0">{messageCount}Q</p>
         </div>
-        <p className="text-xs text-text-secondary/40 mt-0.5">
-          {timeAgo(session.updatedAt)}
-        </p>
+
+        <p className="text-xs text-text-secondary/35 mt-0.5">{timeAgo(session.updatedAt)}</p>
       </div>
 
       {/* Delete button */}
@@ -162,10 +210,10 @@ const SessionItem = ({
               flex-shrink-0 w-5 h-5 rounded flex items-center justify-center transition-colors mt-0.5
               ${confirmingDelete
                 ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
-                : 'text-text-secondary/50 hover:text-red-400 hover:bg-red-500/10'
+                : 'text-text-secondary/40 hover:text-red-400 hover:bg-red-500/10'
               }
             `}
-            title={confirmingDelete ? 'Click again to confirm delete' : 'Delete session'}
+            title={confirmingDelete ? 'Click again to confirm' : 'Delete session'}
           >
             {confirmingDelete ? (
               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -187,20 +235,18 @@ const SessionItem = ({
 
 function groupSessions(sessions) {
   const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
-  const lastWeek = new Date(today);
-  lastWeek.setDate(lastWeek.getDate() - 7);
+  const today     = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
+  const lastWeek  = new Date(today); lastWeek.setDate(lastWeek.getDate() - 7);
 
   const groups = { Today: [], Yesterday: [], 'Last 7 days': [], Older: [] };
 
   for (const session of sessions) {
     const d = new Date(session.updatedAt);
-    if (d >= today) groups.Today.push(session);
+    if      (d >= today)     groups.Today.push(session);
     else if (d >= yesterday) groups.Yesterday.push(session);
-    else if (d >= lastWeek) groups['Last 7 days'].push(session);
-    else groups.Older.push(session);
+    else if (d >= lastWeek)  groups['Last 7 days'].push(session);
+    else                     groups.Older.push(session);
   }
 
   return groups;

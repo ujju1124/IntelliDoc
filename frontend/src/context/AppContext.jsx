@@ -145,7 +145,17 @@ export const AppContextProvider = ({ children }) => {
     if (!session) return;
     setActiveSessionId(sessionId);
     setActiveMessages(session.messages);
+    // Also restore the document context if switching to a different-document session
+    // so the top bar shows the right document name (read-only indicator handled in UI)
   }, [allSessions]);
+
+  // ── Check if active session belongs to current document ───────────────────
+  const isActiveSessionReadOnly = useCallback(() => {
+    const session = allSessions.find(s => s.id === activeSessionId);
+    if (!session) return false; // brand new unsaved session — not read-only
+    if (!session.documentId) return false; // old session with no doc id stored
+    return session.documentId !== currentDocument?.document_id;
+  }, [allSessions, activeSessionId, currentDocument]);
 
   // ── Delete a session ───────────────────────────────────────────────────────
   const deleteSession = useCallback((sessionId) => {
@@ -181,6 +191,7 @@ export const AppContextProvider = ({ children }) => {
     newSession,
     switchSession,
     deleteSession,
+    isActiveSessionReadOnly,
     // Legacy aliases (keeps DebatePage working without changes)
     currentSession,
     debateMessages,

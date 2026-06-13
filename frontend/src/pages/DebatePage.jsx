@@ -23,11 +23,17 @@ const DebatePage = () => {
     activeMessages,
     setActiveMessages,
     newSession,
+    allSessions,
+    activeSessionId,
+    isActiveSessionReadOnly,
   } = useAppContext();
 
   const { messages, loading, error, sendMessage, reset, loadMessages } = useDebate();
   const [input, setInput] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  // Is the viewed session from a different document?
+  const readOnly = isActiveSessionReadOnly();
 
   // ── Guards ─────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -185,6 +191,29 @@ const DebatePage = () => {
 
           {/* Messages */}
           <div className="flex-1 overflow-y-auto px-4 py-4" style={{ scrollbarWidth: 'thin' }}>
+            {/* Read-only banner for sessions from other documents */}
+            {readOnly && messages.length > 0 && (
+              <div className="max-w-4xl mx-auto mb-4">
+                <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-400">
+                  <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                  <span>
+                    This session was from <strong className="font-semibold">
+                      {allSessions.find(s => s.id === activeSessionId)?.documentName || 'another document'}
+                    </strong>. Viewing read-only.
+                  </span>
+                  <button
+                    onClick={handleNewSession}
+                    className="ml-auto flex-shrink-0 px-2.5 py-1 rounded bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 font-medium transition-colors"
+                  >
+                    New Session
+                  </button>
+                </div>
+              </div>
+            )}
+
             {messages.length === 0 ? (
               <EmptyState questions={suggestedQuestions} onSelect={handleSuggestedQuestion} />
             ) : (
@@ -198,36 +227,57 @@ const DebatePage = () => {
           {/* Input */}
           <div className="px-4 py-3 border-t border-white/5">
             <div className="max-w-4xl mx-auto">
-              <div className="glass-card p-3 flex gap-3 items-end">
-                <textarea
-                  ref={textareaRef}
-                  value={input}
-                  onChange={handleInputChange}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Ask a question..."
-                  disabled={loading}
-                  rows={1}
-                  className="flex-1 bg-transparent text-text-primary placeholder-text-secondary resize-none outline-none text-sm disabled:opacity-50"
-                  style={{ maxHeight: '150px' }}
-                />
-                <button
-                  onClick={handleSend}
-                  disabled={!input.trim() || loading}
-                  className="flex-shrink-0 w-9 h-9 rounded-lg bg-violet hover:bg-violet/90 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
-                >
-                  {loading ? (
-                    <Spinner size="sm" color="white" />
-                  ) : (
-                    <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                    </svg>
-                  )}
-                </button>
-              </div>
-              <div className="flex items-center justify-between mt-1.5 px-1">
-                <p className="text-xs text-text-secondary/50">Enter to send · Shift+Enter for new line</p>
-                <p className="text-xs text-text-secondary/50">{input.length}/1000</p>
-              </div>
+              {readOnly ? (
+                /* Read-only state — show prompt to start new session */
+                <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-white/3 border border-white/10">
+                  <svg className="w-4 h-4 text-text-secondary/50 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                  <span className="text-sm text-text-secondary/60 flex-1">
+                    Read-only — upload the original document to continue this debate
+                  </span>
+                  <button
+                    onClick={handleNewSession}
+                    className="flex-shrink-0 px-3 py-1.5 rounded-lg bg-violet/20 hover:bg-violet/30 text-violet text-sm font-medium transition-colors"
+                  >
+                    New Session
+                  </button>
+                </div>
+              ) : (
+                /* Active input */
+                <>
+                  <div className="glass-card p-3 flex gap-3 items-end">
+                    <textarea
+                      ref={textareaRef}
+                      value={input}
+                      onChange={handleInputChange}
+                      onKeyDown={handleKeyDown}
+                      placeholder="Ask a question..."
+                      disabled={loading}
+                      rows={1}
+                      className="flex-1 bg-transparent text-text-primary placeholder-text-secondary resize-none outline-none text-sm disabled:opacity-50"
+                      style={{ maxHeight: '150px' }}
+                    />
+                    <button
+                      onClick={handleSend}
+                      disabled={!input.trim() || loading}
+                      className="flex-shrink-0 w-9 h-9 rounded-lg bg-violet hover:bg-violet/90 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
+                    >
+                      {loading ? (
+                        <Spinner size="sm" color="white" />
+                      ) : (
+                        <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between mt-1.5 px-1">
+                    <p className="text-xs text-text-secondary/50">Enter to send · Shift+Enter for new line</p>
+                    <p className="text-xs text-text-secondary/50">{input.length}/1000</p>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -253,8 +303,18 @@ const DebatePage = () => {
           {/* Current session info */}
           <div className="mt-auto pt-3 border-t border-white/5">
             <p className="text-xs font-bold text-violet uppercase tracking-wider mb-2">Current</p>
-            <p className="text-xs text-text-secondary mb-1">Session</p>
-            <p className="text-xs font-mono text-text-primary/60 truncate">{currentSession?.slice(0, 16)}…</p>
+            <p className="text-xs text-text-secondary mb-1">Document</p>
+            <p className="text-xs text-text-primary/70 truncate">
+              {readOnly
+                ? allSessions.find(s => s.id === activeSessionId)?.documentName || '—'
+                : truncateText(currentDocument?.filename, 20)
+              }
+            </p>
+            {readOnly && (
+              <span className="inline-block mt-1 text-[9px] px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400 font-medium tracking-wide">
+                VIEW ONLY
+              </span>
+            )}
             <p className="text-xs text-text-secondary mt-2 mb-1">Messages</p>
             <p className="text-xs text-text-primary">{messages.length} question{messages.length !== 1 ? 's' : ''}</p>
           </div>
