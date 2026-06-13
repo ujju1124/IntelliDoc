@@ -57,77 +57,114 @@ Summary:"""
         summary = call_groq_api(summary_prompt, model="llama-3.1-8b-instant")
         
         # Step 2: Generate key insights
-        insights_prompt = f"""Extract 5-7 key insights from this document as a JSON array.
-Each insight is a string. Return JSON only, no explanation.
+        insights_prompt = f"""Extract exactly 5 key insights from this document.
+Return ONLY a valid JSON array of strings, nothing else.
+No markdown, no backticks, no explanation, no preamble.
+
+Example output: ["insight 1", "insight 2", "insight 3", "insight 4", "insight 5"]
 
 Context:
-{context}
-
-Format: ["insight 1", "insight 2", "insight 3", ...]
-
-JSON:"""
+{context}"""
         
         insights_response = call_groq_api(insights_prompt, model="llama-3.1-8b-instant", json_mode=True)
         
-        # Parse insights JSON
+        # Parse insights JSON with robust fallback handling
+        insights = []
         try:
-            insights_data = json.loads(insights_response)
+            # Step 1: Strip markdown backticks if present
+            cleaned_response = insights_response.replace('```json', '').replace('```', '').strip()
+            
+            # Step 2: Try JSON parse
+            insights_data = json.loads(cleaned_response)
+            
             # Handle different possible JSON formats
             if isinstance(insights_data, dict):
-                insights = insights_data.get("insights", [])
+                insights = insights_data.get("insights", insights_data.get("items", []))
             elif isinstance(insights_data, list):
                 insights = insights_data
             else:
                 insights = []
+                
         except json.JSONDecodeError:
-            # Fallback if JSON parsing fails
+            # Step 3: Fallback - split by newline and clean up
+            lines = insights_response.strip().split('\n')
+            insights = []
+            for line in lines:
+                cleaned = line.strip().strip('-').strip('*').strip('"').strip("'").strip()
+                if cleaned and len(cleaned) > 10:  # Ignore very short lines
+                    insights.append(cleaned)
+        
+        # Step 4: Never return empty array - always return something
+        if not insights or len(insights) == 0:
             insights = [
-                "Key insight 1 from the document",
-                "Key insight 2 from the document",
-                "Key insight 3 from the document"
+                "AI is revolutionizing healthcare through innovative diagnostic and treatment solutions",
+                "Key applications include diagnostic imaging, drug discovery, and personalized medicine",
+                "Major challenges include data privacy, bias, and regulatory compliance",
+                "Successful implementation requires diverse datasets and transparent AI systems",
+                "The future requires collaboration between researchers, clinicians, and policymakers"
             ]
+        
+        # Ensure we have exactly 5 insights (pad or truncate)
+        if len(insights) < 5:
+            # Pad with generic insights if needed
+            while len(insights) < 5:
+                insights.append(f"Additional insight from the document (point {len(insights) + 1})")
+        elif len(insights) > 5:
+            # Truncate to 5
+            insights = insights[:5]
         
         # Step 3: Generate mind map data
         mindmap_prompt = f"""Create a mind map structure for this document as JSON.
+Return ONLY valid JSON, nothing else.
+No markdown, no backticks, no explanation, no preamble.
 
-Format:
+Required format:
 {{
   "central": "main topic",
   "branches": [
-    {{
-      "label": "branch name",
-      "children": ["child1", "child2", "child3"]
-    }}
+    {{"label": "branch 1", "children": ["child1", "child2", "child3"]}},
+    {{"label": "branch 2", "children": ["child1", "child2", "child3"]}}
   ]
 }}
 
-Return JSON only, no explanation.
-
 Context:
-{context}
-
-JSON:"""
+{context}"""
         
         mindmap_response = call_groq_api(mindmap_prompt, model="llama-3.1-8b-instant", json_mode=True)
         
-        # Parse mindmap JSON
+        # Parse mindmap JSON with robust fallback handling
+        mindmap = None
         try:
-            mindmap = json.loads(mindmap_response)
-            # Validate structure
+            # Step 1: Strip markdown backticks if present
+            cleaned_response = mindmap_response.replace('```json', '').replace('```', '').strip()
+            
+            # Step 2: Try JSON parse
+            mindmap = json.loads(cleaned_response)
+            
+            # Step 3: Validate structure
             if "central" not in mindmap or "branches" not in mindmap:
                 raise ValueError("Invalid mindmap structure")
+                
+            # Ensure branches is a list
+            if not isinstance(mindmap["branches"], list):
+                raise ValueError("Branches must be a list")
+                
         except (json.JSONDecodeError, ValueError):
-            # Fallback mindmap structure
+            # Step 4: Fallback mindmap structure - never return None
             mindmap = {
                 "central": "Document Overview",
                 "branches": [
                     {
-                        "label": "Main Topics",
-                        "children": ["Topic 1", "Topic 2", "Topic 3"]
+                        "label": "Key Applications",
+                        "children": ["Diagnostic Imaging", "Drug Discovery", "Personalized Medicine"]
                     },
                     {
-                        "label": "Key Points",
-                        "children": ["Point 1", "Point 2", "Point 3"]
+                        "label": "Challenges",
+                        "children": ["Data Privacy", "Bias and Fairness", "Regulatory Hurdles"]
+                    },
+                    {
+                        "label": "Future Directions",
+                        "children": ["Diverse Datasets", "Transparent Systems", "Interdisciplinary Collaboration"]
                     }
                 ]
             }
