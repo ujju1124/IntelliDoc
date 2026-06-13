@@ -1,33 +1,15 @@
-# ── Core web framework ────────────────────────────────────────────────────────
-fastapi==0.115.6
-uvicorn==0.32.1
-python-multipart==0.0.12
-
-# ── Data validation ───────────────────────────────────────────────────────────
-pydantic==2.10.4
-pydantic-settings==2.7.0
-python-dotenv==1.0.1
-
-# ── Embeddings ────────────────────────────────────────────────────────────────
-# torch pulled separately via build command to force CPU-only wheel
-sentence-transformers==2.7.0
-
-# ── LLM / Agents ─────────────────────────────────────────────────────────────
-groq==0.11.0
-langgraph==0.2.28
-
-# ── Vector DB ─────────────────────────────────────────────────────────────────
-pinecone==5.0.1
-
-# ── Cache / Memory ────────────────────────────────────────────────────────────
-redis==5.0.8
-
-# ── Database ──────────────────────────────────────────────────────────────────
-sqlalchemy==2.0.36
-
-# ── Document processing ───────────────────────────────────────────────────────
-pdfplumber==0.11.4
-nltk==3.9.1
-
-# ── HTTP ──────────────────────────────────────────────────────────────────────
-requests==2.32.3
+fastapi
+uvicorn
+python-multipart
+pydantic
+pydantic-settings
+python-dotenv
+sentence-transformers
+groq
+langgraph
+pinecone
+redis
+sqlalchemy
+pdfplumber
+nltk
+requests
