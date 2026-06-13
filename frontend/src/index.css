@@ -1,71 +1,90 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-@layer base {
-  * {
-    @apply border-border;
-  }
-  
-  body {
-    @apply bg-background text-text-primary font-sans;
-    font-family: 'Inter', system-ui, sans-serif;
-  }
+/* ─── Design tokens ─────────────────────────────────── */
+:root {
+  --color-background:    #080810;
+  --color-surface:       #0f0f1a;
+  --color-border:        rgba(255, 255, 255, 0.06);
+  --color-violet:        #7c3aed;
+  --color-blue:          #3b82f6;
+  --color-success:       #10b981;
+  --color-error:         #ef4444;
+  --color-amber:         #f59e0b;
+  --color-text-primary:  #f1f5f9;
+  --color-text-secondary:#94a3b8;
 }
 
-@layer utilities {
-  /* Dot grid background pattern */
-  .dot-grid {
-    background-image: radial-gradient(circle, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
-    background-size: 24px 24px;
-  }
-  
-  /* Glassmorphism card style */
-  .glass-card {
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    backdrop-filter: blur(10px);
-    border-radius: 12px;
-  }
-  
-  /* Violet gradient text */
-  .gradient-text {
-    background: linear-gradient(135deg, #7c3aed 0%, #3b82f6 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-  
-  /* Violet gradient button */
-  .gradient-button {
-    background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%);
-    transition: all 0.2s ease;
-  }
-  
-  .gradient-button:hover {
-    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
-    transform: translateY(-1px);
-    box-shadow: 0 10px 25px rgba(124, 58, 237, 0.3);
-  }
-  
-  /* Scrollbar styles */
-  ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-  
-  ::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.03);
-  }
-  
-  ::-webkit-scrollbar-thumb {
-    background: rgba(124, 58, 237, 0.5);
-    border-radius: 4px;
-  }
-  
-  ::-webkit-scrollbar-thumb:hover {
-    background: rgba(124, 58, 237, 0.7);
-  }
+/* ─── Base ───────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
 }
+
+body {
+  margin: 0;
+  background-color: var(--color-background);
+  color: var(--color-text-primary);
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─── Tailwind theme extension ───────────────────────── */
+@theme {
+  --color-background:     #080810;
+  --color-surface:        #0f0f1a;
+  --color-violet:         #7c3aed;
+  --color-blue:           #3b82f6;
+  --color-success:        #10b981;
+  --color-error:          #ef4444;
+  --color-amber:          #f59e0b;
+  --color-text-primary:   #f1f5f9;
+  --color-text-secondary: #94a3b8;
+  --font-family-sans:     'Inter', system-ui, sans-serif;
+}
+
+/* ─── Utility classes ─────────────────────────────────── */
+
+/* Dot grid background */
+.dot-grid {
+  background-image: radial-gradient(circle, rgba(255,255,255,0.08) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* Glassmorphism card */
+.glass-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+}
+
+/* Violet-to-blue gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, #7c3aed 0%, #3b82f6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Gradient button */
+.gradient-button {
+  background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%);
+  transition: all 0.2s ease;
+  color: #fff;
+  cursor: pointer;
+}
+.gradient-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 25px rgba(124, 58, 237, 0.3);
+}
+.gradient-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ─── Scrollbar ───────────────────────────────────────── */
+::-webkit-scrollbar            { width: 6px; height: 6px; }
+::-webkit-scrollbar-track      { background: rgba(255,255,255,0.03); }
+::-webkit-scrollbar-thumb      { background: rgba(124,58,237,0.4); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover{ background: rgba(124,58,237,0.7); }
