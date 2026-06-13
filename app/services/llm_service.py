@@ -56,7 +56,7 @@ def call_groq_api(prompt: str, model: str = "llama-3.1-8b-instant", json_mode: b
         model=model,
         messages=messages,
         temperature=0.7,
-        max_tokens=500,
+        max_tokens=1024,
         **extra_params
     )
     
