@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { generateSessionId } from '../utils/helpers';
 
 const AppContext = createContext();
@@ -11,98 +11,183 @@ export const useAppContext = () => {
   return context;
 };
 
+// ─── localStorage helpers ───────────────────────────────────────────────────
+
+const LS_SESSIONS_KEY = 'intellidoc_sessions';
+const LS_ACTIVE_KEY   = 'intellidoc_active_session';
+const SS_DOCUMENT_KEY = 'currentDocument';
+const SS_ANALYSIS_KEY = 'analysisData';
+
+const loadSessions = () => {
+  try {
+    const raw = localStorage.getItem(LS_SESSIONS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+};
+
+const saveSessions = (sessions) => {
+  try {
+    localStorage.setItem(LS_SESSIONS_KEY, JSON.stringify(sessions));
+  } catch (e) {
+    console.error('Error saving sessions:', e);
+  }
+};
+
+// ─── Provider ────────────────────────────────────────────────────────────────
+
 export const AppContextProvider = ({ children }) => {
-  // Document state
-  const [currentDocument, setCurrentDocument] = useState(null);
-  
-  // Analysis data state
-  const [analysisData, setAnalysisData] = useState(null);
-  
-  // Session state
-  const [currentSession, setCurrentSession] = useState(() => generateSessionId());
-  
-  // Debate messages state
-  const [debateMessages, setDebateMessages] = useState([]);
-  
-  // Clear session - generates new session ID and clears messages
-  const clearSession = () => {
-    setCurrentSession(generateSessionId());
-    setDebateMessages([]);
-  };
-  
-  // Load state from sessionStorage on mount
+  // Current document being analyzed / debated
+  const [currentDocument, setCurrentDocument] = useState(() => {
+    try {
+      const raw = sessionStorage.getItem(SS_DOCUMENT_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+  });
+
+  // Intelligence dashboard analysis
+  const [analysisData, setAnalysisData] = useState(() => {
+    try {
+      const raw = sessionStorage.getItem(SS_ANALYSIS_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+  });
+
+  // All saved debate sessions
+  const [allSessions, setAllSessions] = useState(() => loadSessions());
+
+  // The currently active session id
+  const [activeSessionId, setActiveSessionId] = useState(() => {
+    return localStorage.getItem(LS_ACTIVE_KEY) || generateSessionId();
+  });
+
+  // Active session messages (live, in-memory)
+  const [activeMessages, setActiveMessages] = useState(() => {
+    const sessions = loadSessions();
+    const active = sessions.find(s => s.id === localStorage.getItem(LS_ACTIVE_KEY));
+    return active ? active.messages : [];
+  });
+
+  // ── Persist document & analysis to sessionStorage ──────────────────────────
   useEffect(() => {
     try {
-      const savedDocument = sessionStorage.getItem('currentDocument');
-      const savedAnalysis = sessionStorage.getItem('analysisData');
-      const savedSession = sessionStorage.getItem('currentSession');
-      const savedMessages = sessionStorage.getItem('debateMessages');
-      
-      if (savedDocument) setCurrentDocument(JSON.parse(savedDocument));
-      if (savedAnalysis) setAnalysisData(JSON.parse(savedAnalysis));
-      if (savedSession) setCurrentSession(savedSession);
-      if (savedMessages) setDebateMessages(JSON.parse(savedMessages));
-    } catch (error) {
-      console.error('Error loading state from sessionStorage:', error);
-    }
-  }, []);
-  
-  // Save state to sessionStorage when it changes
-  useEffect(() => {
-    try {
-      if (currentDocument) {
-        sessionStorage.setItem('currentDocument', JSON.stringify(currentDocument));
-      } else {
-        sessionStorage.removeItem('currentDocument');
-      }
-    } catch (error) {
-      console.error('Error saving document to sessionStorage:', error);
-    }
+      if (currentDocument) sessionStorage.setItem(SS_DOCUMENT_KEY, JSON.stringify(currentDocument));
+      else sessionStorage.removeItem(SS_DOCUMENT_KEY);
+    } catch {}
   }, [currentDocument]);
-  
+
   useEffect(() => {
     try {
-      if (analysisData) {
-        sessionStorage.setItem('analysisData', JSON.stringify(analysisData));
-      } else {
-        sessionStorage.removeItem('analysisData');
-      }
-    } catch (error) {
-      console.error('Error saving analysis to sessionStorage:', error);
-    }
+      if (analysisData) sessionStorage.setItem(SS_ANALYSIS_KEY, JSON.stringify(analysisData));
+      else sessionStorage.removeItem(SS_ANALYSIS_KEY);
+    } catch {}
   }, [analysisData]);
-  
+
+  // ── Persist sessions & active id to localStorage ───────────────────────────
   useEffect(() => {
-    try {
-      sessionStorage.setItem('currentSession', currentSession);
-    } catch (error) {
-      console.error('Error saving session to sessionStorage:', error);
-    }
-  }, [currentSession]);
-  
+    saveSessions(allSessions);
+  }, [allSessions]);
+
   useEffect(() => {
-    try {
-      if (debateMessages.length > 0) {
-        sessionStorage.setItem('debateMessages', JSON.stringify(debateMessages));
-      } else {
-        sessionStorage.removeItem('debateMessages');
+    localStorage.setItem(LS_ACTIVE_KEY, activeSessionId);
+  }, [activeSessionId]);
+
+  // ── Upsert the active session in allSessions whenever messages change ──────
+  const flushActiveSession = useCallback((messages, sessionId, document) => {
+    if (!messages || messages.length === 0) return;
+
+    const title = messages[0]?.userMessage
+      ? messages[0].userMessage.slice(0, 50) + (messages[0].userMessage.length > 50 ? '…' : '')
+      : 'Untitled session';
+
+    setAllSessions(prev => {
+      const existing = prev.find(s => s.id === sessionId);
+      if (existing) {
+        return prev.map(s =>
+          s.id === sessionId
+            ? { ...s, messages, title, updatedAt: new Date().toISOString() }
+            : s
+        );
       }
-    } catch (error) {
-      console.error('Error saving messages to sessionStorage:', error);
+      return [
+        {
+          id: sessionId,
+          title,
+          documentName: document?.filename || 'Unknown document',
+          documentId: document?.document_id || null,
+          messages,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+        ...prev,
+      ];
+    });
+  }, []);
+
+  // Flush whenever messages or active session change
+  useEffect(() => {
+    if (activeMessages.length > 0) {
+      flushActiveSession(activeMessages, activeSessionId, currentDocument);
     }
-  }, [debateMessages]);
-  
+  }, [activeMessages, activeSessionId, flushActiveSession, currentDocument]);
+
+  // ── Create a brand new session ─────────────────────────────────────────────
+  const newSession = useCallback(() => {
+    const id = generateSessionId();
+    setActiveSessionId(id);
+    setActiveMessages([]);
+  }, []);
+
+  // ── Switch to an existing session ─────────────────────────────────────────
+  const switchSession = useCallback((sessionId) => {
+    const session = allSessions.find(s => s.id === sessionId);
+    if (!session) return;
+    setActiveSessionId(sessionId);
+    setActiveMessages(session.messages);
+  }, [allSessions]);
+
+  // ── Delete a session ───────────────────────────────────────────────────────
+  const deleteSession = useCallback((sessionId) => {
+    setAllSessions(prev => prev.filter(s => s.id !== sessionId));
+    // If we deleted the active session, start fresh
+    if (sessionId === activeSessionId) {
+      newSession();
+    }
+  }, [activeSessionId, newSession]);
+
+  // ── Legacy clearSession alias (keeps existing code working) ───────────────
+  const clearSession = useCallback(() => {
+    newSession();
+  }, [newSession]);
+
+  // Expose debateMessages as alias so DebatePage still compiles
+  const debateMessages = activeMessages;
+  const setDebateMessages = setActiveMessages;
+  const currentSession = activeSessionId;
+
   const value = {
+    // Document
     currentDocument,
     setCurrentDocument,
+    // Analysis
     analysisData,
     setAnalysisData,
+    // Sessions — new API
+    allSessions,
+    activeSessionId,
+    activeMessages,
+    setActiveMessages,
+    newSession,
+    switchSession,
+    deleteSession,
+    // Legacy aliases (keeps DebatePage working without changes)
     currentSession,
     debateMessages,
     setDebateMessages,
     clearSession,
   };
-  
+
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 };
 

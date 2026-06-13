@@ -5,13 +5,17 @@ const useDebate = () => {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [typingAgents, setTypingAgents] = useState({
-    summarizer: false,
-    critic: false,
-    devils_advocate: false,
-    moderator: false,
-  });
 
+  // ── Load stored messages when switching to a session ──────────────────────
+  const loadMessages = (stored) => {
+    if (Array.isArray(stored)) {
+      setMessages(stored);
+    } else {
+      setMessages([]);
+    }
+  };
+
+  // ── Send a new debate message ──────────────────────────────────────────────
   const sendMessage = async (sessionId, userMessage, documentId) => {
     if (!userMessage.trim() || !sessionId || !documentId) {
       setError('Missing required parameters');
@@ -21,7 +25,7 @@ const useDebate = () => {
     setLoading(true);
     setError(null);
 
-    // Add user message and typing indicators immediately
+    // Optimistically add the user turn with empty agent slots
     const newTurn = {
       userMessage,
       timestamp: new Date().toISOString(),
@@ -32,7 +36,7 @@ const useDebate = () => {
         moderator: '',
       },
       isTyping: {
-        summarizer: false,
+        summarizer: true,
         critic: false,
         devils_advocate: false,
         moderator: false,
@@ -41,84 +45,50 @@ const useDebate = () => {
 
     setMessages((prev) => [...prev, newTurn]);
 
-    // Show typing indicators with staggered delays
-    setTimeout(() => {
-      setTypingAgents((prev) => ({ ...prev, summarizer: true }));
-      updateMessageTyping(messages.length, 'summarizer', true);
-    }, 0);
-
-    setTimeout(() => {
-      setTypingAgents((prev) => ({ ...prev, critic: true }));
-      updateMessageTyping(messages.length, 'critic', true);
-    }, 600);
-
-    setTimeout(() => {
-      setTypingAgents((prev) => ({ ...prev, devils_advocate: true }));
-      updateMessageTyping(messages.length, 'devils_advocate', true);
-    }, 1200);
-
-    setTimeout(() => {
-      setTypingAgents((prev) => ({ ...prev, moderator: true }));
-      updateMessageTyping(messages.length, 'moderator', true);
-    }, 1800);
+    // Staggered typing indicators
+    const timers = [];
+    timers.push(setTimeout(() => showTyping(true, false, false, false), 0));
+    timers.push(setTimeout(() => showTyping(true, true, false, false), 600));
+    timers.push(setTimeout(() => showTyping(true, true, true, false), 1200));
+    timers.push(setTimeout(() => showTyping(true, true, true, true), 1800));
 
     try {
       const response = await sendDebateMessage(sessionId, userMessage, documentId);
 
-      // Clear all typing indicators and update with actual responses
-      setTypingAgents({
-        summarizer: false,
-        critic: false,
-        devils_advocate: false,
-        moderator: false,
-      });
+      // Clear all timers
+      timers.forEach(clearTimeout);
 
-      // Update the message with actual debate responses
+      // Replace the optimistic entry with the real response
       setMessages((prev) => {
         const updated = [...prev];
-        const lastIndex = updated.length - 1;
-        if (lastIndex >= 0) {
-          updated[lastIndex] = {
-            ...updated[lastIndex],
+        const last = updated.length - 1;
+        if (last >= 0) {
+          updated[last] = {
+            ...updated[last],
             debate: response.debate,
-            isTyping: {
-              summarizer: false,
-              critic: false,
-              devils_advocate: false,
-              moderator: false,
-            },
+            isTyping: { summarizer: false, critic: false, devils_advocate: false, moderator: false },
           };
         }
         return updated;
       });
     } catch (err) {
+      timers.forEach(clearTimeout);
       setError(err.message || 'Failed to send message');
-      
-      // Remove the failed message
+      // Remove the failed optimistic turn
       setMessages((prev) => prev.slice(0, -1));
-      
-      // Clear typing indicators
-      setTypingAgents({
-        summarizer: false,
-        critic: false,
-        devils_advocate: false,
-        moderator: false,
-      });
     } finally {
       setLoading(false);
     }
   };
 
-  const updateMessageTyping = (messageIndex, agent, isTyping) => {
+  const showTyping = (s, c, d, m) => {
     setMessages((prev) => {
       const updated = [...prev];
-      if (updated[messageIndex]) {
-        updated[messageIndex] = {
-          ...updated[messageIndex],
-          isTyping: {
-            ...updated[messageIndex].isTyping,
-            [agent]: isTyping,
-          },
+      const last = updated.length - 1;
+      if (last >= 0) {
+        updated[last] = {
+          ...updated[last],
+          isTyping: { summarizer: s, critic: c, devils_advocate: d, moderator: m },
         };
       }
       return updated;
@@ -129,20 +99,14 @@ const useDebate = () => {
     setMessages([]);
     setLoading(false);
     setError(null);
-    setTypingAgents({
-      summarizer: false,
-      critic: false,
-      devils_advocate: false,
-      moderator: false,
-    });
   };
 
   return {
     messages,
     loading,
     error,
-    typingAgents,
     sendMessage,
+    loadMessages,
     reset,
   };
 };
