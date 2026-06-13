@@ -22,9 +22,9 @@ const DashboardPage = () => {
     }
   }, [currentDocument, navigate]);
 
-  // Analyze document on mount if not already analyzed
+  // Analyze document on mount if not already analyzed OR if document changed
   useEffect(() => {
-    if (currentDocument && !analysisData) {
+    if (currentDocument && (!analysisData || analysisData.document_id !== currentDocument.document_id)) {
       analyzeDoc(currentDocument.document_id).then((result) => {
         if (result) {
           setAnalysisData(result);
