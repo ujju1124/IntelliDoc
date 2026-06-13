@@ -30,10 +30,16 @@ def _parse_json_list(raw: str, fallback: list) -> list:
         if isinstance(data, list):
             return data
         if isinstance(data, dict):
+            # Try every value that is a list — return the first non-empty one
             for key in ("items", "insights", "key_insights", "keyInsights",
-                        "questions", "suggested_questions", "results"):
-                if key in data and isinstance(data[key], list):
+                        "questions", "suggested_questions", "debate_questions",
+                        "results", "data"):
+                if key in data and isinstance(data[key], list) and data[key]:
                     return data[key]
+            # Last resort: return the first list value found in the dict
+            for val in data.values():
+                if isinstance(val, list) and val:
+                    return val
     except (json.JSONDecodeError, ValueError):
         # line-by-line fallback
         lines = []
@@ -149,12 +155,24 @@ Context:
 
         # ── 4. Suggested debate questions (document-specific) ─────────────────
         questions_raw = call_groq_api(
-            f"""Based on this document, generate exactly 4 thought-provoking debate questions that would spark interesting discussion.
-Questions should be specific to the document content, not generic.
+            f"""You are analyzing a specific document. Generate exactly 4 debate questions that are SPECIFIC to this document's actual content, topics, and arguments. Do NOT generate generic questions.
 
-Document:
+The questions must reference specific concepts, claims, or topics FROM this document.
+
+Document content:
 {context}
 
+Examples of BAD generic questions (do NOT generate these):
+- "What are the main arguments in this document?"
+- "What are the weaknesses in this document's reasoning?"
+
+Examples of GOOD specific questions (based on a UBI document):
+- "Should UBI be funded through wealth taxes or value-added taxes?"
+- "Can UBI coexist with existing welfare programs like food stamps?"
+- "Does the Finnish UBI pilot prove UBI works at scale?"
+- "Is UBI a realistic solution in developing economies?"
+
+Now generate 4 specific debate questions for THIS document.
 Return ONLY a JSON array of 4 question strings, no markdown:
 ["question 1", "question 2", "question 3", "question 4"]""",
             model="llama-3.1-8b-instant",
@@ -162,10 +180,10 @@ Return ONLY a JSON array of 4 question strings, no markdown:
         )
 
         suggested_questions = _parse_json_list(questions_raw, fallback=[
-            "What are the main arguments presented in this document?",
-            "What are the key weaknesses in this document's reasoning?",
-            "What are the broader implications of this document's conclusions?",
-            "What alternative perspectives are missing from this document?",
+            "What is the central thesis of this document?",
+            "What evidence supports the main claims here?",
+            "What counterarguments does this document fail to address?",
+            "What are the real-world implications of this document's conclusions?",
         ])[:4]
 
         while len(suggested_questions) < 4:
