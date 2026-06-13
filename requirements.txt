@@ -4,7 +4,6 @@ python-multipart
 pydantic
 pydantic-settings
 python-dotenv
-sentence-transformers
 groq
 langgraph
 pinecone
