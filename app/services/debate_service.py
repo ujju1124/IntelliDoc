@@ -63,7 +63,7 @@ User question: {state['user_message']}
 
 Provide your factual summary:"""
     
-    response = call_groq_api(system_prompt, model="llama3-8b-8192")
+    response = call_groq_api(system_prompt, model="llama-3.1-8b-instant")
     
     state["summarizer_response"] = response
     return state
@@ -86,7 +86,7 @@ User question: {state['user_message']}
 
 Provide your critical analysis:"""
     
-    response = call_groq_api(system_prompt, model="llama3-8b-8192")
+    response = call_groq_api(system_prompt, model="llama-3.1-8b-instant")
     
     state["critic_response"] = response
     return state
@@ -109,7 +109,7 @@ User question: {state['user_message']}
 
 Provide your counter-argument:"""
     
-    response = call_groq_api(system_prompt, model="llama3-8b-8192")
+    response = call_groq_api(system_prompt, model="llama-3.1-8b-instant")
     
     state["devils_advocate_response"] = response
     return state
@@ -130,7 +130,7 @@ User question: {state['user_message']}
 
 Provide your final synthesized answer:"""
     
-    response = call_groq_api(system_prompt, model="llama3-8b-8192")
+    response = call_groq_api(system_prompt, model="llama-3.1-8b-instant")
     
     state["moderator_response"] = response
     return state

@@ -54,7 +54,7 @@ Context:
 
 Summary:"""
         
-        summary = call_groq_api(summary_prompt, model="llama3-8b-8192")
+        summary = call_groq_api(summary_prompt, model="llama-3.1-8b-instant")
         
         # Step 2: Generate key insights
         insights_prompt = f"""Extract 5-7 key insights from this document as a JSON array.
@@ -67,7 +67,7 @@ Format: ["insight 1", "insight 2", "insight 3", ...]
 
 JSON:"""
         
-        insights_response = call_groq_api(insights_prompt, model="llama3-8b-8192", json_mode=True)
+        insights_response = call_groq_api(insights_prompt, model="llama-3.1-8b-instant", json_mode=True)
         
         # Parse insights JSON
         try:
@@ -108,7 +108,7 @@ Context:
 
 JSON:"""
         
-        mindmap_response = call_groq_api(mindmap_prompt, model="llama3-8b-8192", json_mode=True)
+        mindmap_response = call_groq_api(mindmap_prompt, model="llama-3.1-8b-instant", json_mode=True)
         
         # Parse mindmap JSON
         try:
