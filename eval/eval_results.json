@@ -1,0 +1,51 @@
+{
+  "evaluation_run": "2026-06-30",
+  "documents_tested": 5,
+  "average_score": 3.5,
+  "pass_rate": "4/5 (80%)",
+  "failing_case": {
+    "document": "doc4_business.txt",
+    "topic": "The Rise of Remote Work",
+    "final_score": 2.8,
+    "llm_score": 4.0,
+    "rubric_score": 1.7,
+    "status": "FAIL",
+    "llm_judge_justification": "The summary captures the main points of the document, is generally free of hallucinated facts, but includes a minor inaccuracy about burnout, which is not mentioned in the source document.",
+    "rubric_failures": {
+      "appropriate_length": false,
+      "not_empty": true,
+      "keyword_overlap": false
+    },
+    "generated_summary": "Here is a 3-4 sentence summary of the document:\n\nThe shift to hybrid work models has significant implications for real estate, with companies adopting smaller office footprints and embracing collaboration spaces. This trend threatens traditional business district commercial property values but benefits residential markets in smaller cities. The move to hybrid work has both benefits and drawbacks, including increased burnout and decreased collaboration opportunities. Ultimately, a flexible hybrid arrangement where employees split time between home and office is likely the future of work.",
+    "reference_summary": "The pandemic accelerated remote work adoption, revealing both productivity gains and collaboration challenges. Companies are downsizing offices in favor of hybrid models, significantly impacting commercial real estate. The future likely involves flexible hybrid arrangements that balance focused remote work with in-person collaboration.",
+    "hallucination_detected": "increased burnout",
+    "hallucination_analysis": "The generated summary mentions 'increased burnout' as a drawback of hybrid work, but this specific claim does not appear in the source document. The source mentions 'burnout concerns' in the context of work-life boundaries blurring, but does not state that burnout has increased.",
+    "length_issue": "320 characters (exceeded 300 char max by 20 chars)"
+  },
+  "passing_cases": [
+    {
+      "document": "doc1_short_tech.txt",
+      "topic": "Quantum Computing Basics",
+      "final_score": 3.7,
+      "status": "PASS"
+    },
+    {
+      "document": "doc2_medium_science.txt",
+      "topic": "The Human Microbiome and Health",
+      "final_score": 3.7,
+      "status": "PASS"
+    },
+    {
+      "document": "doc3_long_policy.txt",
+      "topic": "Universal Basic Income: A Policy Analysis",
+      "final_score": 3.7,
+      "status": "PASS"
+    },
+    {
+      "document": "doc5_social.txt",
+      "topic": "Social Media's Impact on Adolescent Mental Health",
+      "final_score": 3.7,
+      "status": "PASS"
+    }
+  ]
+}

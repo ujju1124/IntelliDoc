@@ -375,6 +375,7 @@ python eval/run_eval.py
 - ❌ Multi-user session isolation
 - ❌ LLM output consistency across multiple runs
 - ❌ Network failure recovery (Groq/Pinecone/Redis downtime)
+- ❌ Summarizer occasionally introduces plausible-sounding claims not grounded in the source document (hallucination) — caught by eval/run_eval.py, see eval/eval_results.json for the specific case. Mitigation not yet implemented: would require constraining the summarization prompt to only include claims directly supported by extracted source sentences, or adding a separate fact-verification pass after generation.
 
 **Production Considerations:**
 - Groq API rate limits: 30 requests/minute on free tier
