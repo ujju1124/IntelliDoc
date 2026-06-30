@@ -1,0 +1,5 @@
+Quantum Computing Basics
+
+Quantum computing leverages quantum mechanical phenomena like superposition and entanglement to process information. Unlike classical bits that are either 0 or 1, qubits can exist in multiple states simultaneously.
+
+This property enables quantum computers to solve certain problems exponentially faster than classical computers, particularly in cryptography, optimization, and drug discovery.

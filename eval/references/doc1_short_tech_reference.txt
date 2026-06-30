@@ -1,0 +1,1 @@
+Quantum computing uses quantum mechanical properties like superposition and entanglement to enable qubits to exist in multiple states simultaneously. This allows quantum computers to solve certain problems exponentially faster than classical computers, particularly in cryptography, optimization, and drug discovery.

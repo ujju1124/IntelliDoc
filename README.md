@@ -310,3 +310,75 @@ IntelliDoc/
 ## Author
 
 **Ujwal Dahal** — [@ujju1124](https://github.com/ujju1124)
+
+---
+
+## Testing & Evaluation
+
+### Integration Tests
+**Test Suite**: `tests/test_endpoints.py` (10 tests)  
+**Pass Rate**: **10/10 (100%)**  
+**Coverage**:
+- ✅ Document ingestion (successful upload + duplicate detection)
+- ✅ Analysis pipeline (structure validation + non-empty values)
+- ✅ Multi-agent debate (4-agent sequence + inter-agent references)
+- ✅ Error handling (invalid file types, missing documents, oversized files)
+- ✅ Graceful failure (malformed PDFs, malformed requests)
+
+**Bug Found & Fixed**: During testing, discovered that `/debate` endpoint returned 200 OK even with non-existent `document_id`. Added validation in `debate_service.py` to raise 404 when no content is found.
+
+Run tests:
+```bash
+python -m pytest tests/test_endpoints.py -v
+```
+
+### Summarization Quality Evaluation
+**Evaluation Script**: `eval/run_eval.py`  
+**Documents Tested**: 5 (diverse topics: tech, science, policy, business, social)  
+**Average Score**: **3.5/5**  
+**Pass Rate**: **4/5 (80%)**
+
+**Scoring Method**:
+- LLM-as-judge (Groq evaluates summaries 1-5 with justification)
+- Basic rubric (length, keyword overlap, hallucination check)
+- Comparison against human-written reference summaries
+
+Run evaluation:
+```bash
+python eval/run_eval.py
+```
+
+**Failure Analysis**: One document (doc4_business.txt) scored 2.8/5 due to:
+- Summary exceeded length limit (320 chars vs 300 max)
+- Minor hallucination: mentioned "burnout" not explicitly in source
+- Lower keyword overlap with reference summary
+
+**Results Table**:
+| Document | LLM Score | Rubric Score | Final Score | Status |
+|----------|-----------|--------------|-------------|--------|
+| doc1_short_tech.txt | 4.0 | 3.3 | 3.7 | ✅ PASS |
+| doc2_medium_science.txt | 4.0 | 3.3 | 3.7 | ✅ PASS |
+| doc3_long_policy.txt | 4.0 | 3.3 | 3.7 | ✅ PASS |
+| doc4_business.txt | 4.0 | 1.7 | 2.8 | ❌ FAIL |
+| doc5_social.txt | 4.0 | 3.3 | 3.7 | ✅ PASS |
+| **AVERAGE** | **4.0** | **3.0** | **3.5** | - |
+
+### Known Limitations
+**What's NOT covered in tests:**
+- ❌ Concurrent request handling (no load testing)
+- ❌ Rate limiting behavior under sustained traffic
+- ❌ Pinecone vector search accuracy/recall metrics
+- ❌ Redis session persistence across server restarts
+- ❌ Frontend E2E tests (UI interactions, state management)
+- ❌ Security testing (SQL injection, XSS, CSRF)
+- ❌ Large file handling (>100MB documents)
+- ❌ Multi-user session isolation
+- ❌ LLM output consistency across multiple runs
+- ❌ Network failure recovery (Groq/Pinecone/Redis downtime)
+
+**Production Considerations:**
+- Groq API rate limits: 30 requests/minute on free tier
+- Pinecone free tier: 100K vectors (sufficient for small-scale testing)
+- No authentication/authorization implemented
+- Single-threaded server (use `gunicorn` with workers for production)
+- Environment-specific configs hardcoded in `.env`

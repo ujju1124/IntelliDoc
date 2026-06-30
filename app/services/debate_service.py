@@ -37,6 +37,14 @@ def retrieve_context_node(state: DebateState) -> DebateState:
         document_id=state["document_id"],
         top_k=5
     )
+    
+    # Validate that document has content
+    if not context_chunks:
+        from fastapi import HTTPException
+        raise HTTPException(
+            status_code=404,
+            detail=f"No content found for document_id: {state['document_id']}"
+        )
 
     # Last 4 turns from Redis
     session_key = f"session:{state['session_id']}"
