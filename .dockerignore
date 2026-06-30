@@ -1,0 +1,57 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+tests/
+eval/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentation (keep README.md for HF Spaces)
+TESTING_SUMMARY.md
+DEPLOYMENT_VERIFICATION.md
+QUICK_TEST_GUIDE.md
+TODO.md
+*.log
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Database (will be created in /app/data volume)
+*.db
+app.db
+
+# Frontend
+frontend/
+node_modules/
+
+# Render specific
+render.yaml
+runtime.txt
+
+# Misc
+.DS_Store
+Thumbs.db

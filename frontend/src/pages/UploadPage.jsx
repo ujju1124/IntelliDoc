@@ -59,17 +59,131 @@ const UploadPage = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="max-w-2xl mx-auto"
+          className="max-w-4xl mx-auto"
         >
           {/* Header */}
           <div className="text-center mb-12">
             <h1 className="text-5xl font-bold gradient-text mb-4">
               IntelliDoc
             </h1>
-            <p className="text-xl text-text-secondary">
+            <p className="text-xl text-text-secondary mb-6">
               Multi-Agent Document Intelligence
             </p>
+            <p className="text-base text-text-secondary max-w-2xl mx-auto">
+              Upload any document and get instant AI-powered analysis with multi-agent debate, 
+              intelligent insights, and interactive mind maps — all powered by advanced RAG technology
+            </p>
           </div>
+
+          {/* What is IntelliDoc Section */}
+          {!result && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2 }}
+              className="glass-card p-6 mb-8"
+            >
+              <h3 className="text-lg font-semibold text-text-primary mb-4 flex items-center gap-2">
+                <svg className="w-5 h-5 text-violet" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                What is IntelliDoc?
+              </h3>
+              <p className="text-sm text-text-secondary mb-4">
+                IntelliDoc uses <span className="text-violet font-medium">4 specialized AI agents</span> to analyze your documents from multiple perspectives:
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                <div className="flex items-start gap-2">
+                  <div className="w-6 h-6 rounded bg-blue-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span className="text-blue-400 text-xs font-bold">1</span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-blue-400">Summarizer</p>
+                    <p className="text-xs text-text-secondary">Factual analysis grounded in your document</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <div className="w-6 h-6 rounded bg-red-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span className="text-red-400 text-xs font-bold">2</span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-red-400">Critic</p>
+                    <p className="text-xs text-text-secondary">Challenges assumptions and finds weaknesses</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <div className="w-6 h-6 rounded bg-amber-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span className="text-amber-400 text-xs font-bold">3</span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-amber-400">Devil's Advocate</p>
+                    <p className="text-xs text-text-secondary">Argues opposite perspectives</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <div className="w-6 h-6 rounded bg-green-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span className="text-green-400 text-xs font-bold">4</span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-green-400">Moderator</p>
+                    <p className="text-xs text-text-secondary">Synthesizes all views into balanced verdict</p>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* How It Works Section */}
+          {!result && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3 }}
+              className="glass-card p-6 mb-8"
+            >
+              <h3 className="text-lg font-semibold text-text-primary mb-4 flex items-center gap-2">
+                <svg className="w-5 h-5 text-violet" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                </svg>
+                How It Works (3 Simple Steps)
+              </h3>
+              <div className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-full bg-violet/20 flex items-center justify-center flex-shrink-0">
+                    <span className="text-violet font-bold">1</span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-text-primary">Upload Your Document</p>
+                    <p className="text-xs text-text-secondary">
+                      Upload any PDF or TXT file (max 10MB). Choose between sentence-based or fixed-size chunking strategy.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-full bg-violet/20 flex items-center justify-center flex-shrink-0">
+                    <span className="text-violet font-bold">2</span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-text-primary">Get Instant Analysis</p>
+                    <p className="text-xs text-text-secondary">
+                      View auto-generated summary, 5 key insights, interactive mind map, and document-specific debate questions.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-full bg-violet/20 flex items-center justify-center flex-shrink-0">
+                    <span className="text-violet font-bold">3</span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-text-primary">Start Multi-Agent Debate</p>
+                    <p className="text-xs text-text-secondary">
+                      Ask questions and watch 4 AI agents debate different perspectives in real-time. Export full debates as markdown.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
 
           {/* Upload Card */}
           <div className="glass-card p-8">
@@ -79,7 +193,7 @@ const UploadPage = () => {
                   Upload Your Document
                 </h2>
                 <p className="text-text-secondary mb-6">
-                  Get instant AI analysis and multi-agent insights
+                  Supports PDF and TXT files (max 10MB)
                 </p>
 
                 <FileUpload
@@ -108,12 +222,17 @@ const UploadPage = () => {
                   {loading ? (
                     <>
                       <Spinner size="sm" color="white" />
-                      <span>Uploading...</span>
+                      <span>Uploading & Processing...</span>
                     </>
                   ) : (
                     'Upload Document'
                   )}
                 </button>
+
+                {/* Note for first-time users */}
+                <p className="mt-4 text-xs text-text-secondary text-center">
+                  💡 First upload may take 60-90 seconds while the AI model initializes
+                </p>
               </>
             ) : (
               /* Success State */

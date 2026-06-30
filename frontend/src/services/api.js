@@ -8,6 +8,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 120000, // 120 seconds for HF Spaces cold start
 });
 
 /**
@@ -25,6 +26,7 @@ export const ingestDocument = async (file, strategy = 'sentence') => {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
+      timeout: 180000, // 3 minutes for first upload (model loading + embedding)
     });
 
     return response.data;

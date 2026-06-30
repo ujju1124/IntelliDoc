@@ -18,8 +18,10 @@ app = FastAPI(
 )
 
 # Configure CORS for frontend
+# Allow all Vercel origins (including preview deployments)
 app.add_middleware(
     CORSMiddleware,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_origins=[
         "http://localhost:5173",
         "http://localhost:3000",
@@ -29,8 +31,6 @@ app.add_middleware(
         "https://intellidoc.vercel.app",
         "https://intelli-doc.vercel.app",
         "https://intelli-doc-dusky.vercel.app",
-        # Allow all Vercel preview URLs for your project
-        "https://*.vercel.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
