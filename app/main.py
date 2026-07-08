@@ -31,6 +31,8 @@ app.add_middleware(
         "https://intellidoc.vercel.app",
         "https://intelli-doc.vercel.app",
         "https://intelli-doc-dusky.vercel.app",
+        # Allow requests from Render backend itself (for health checks)
+        "https://intellidoc-backend-p1lj.onrender.com",
     ],
     allow_credentials=True,
     allow_methods=["*"],
