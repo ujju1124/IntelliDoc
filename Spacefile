@@ -1,0 +1,26 @@
+# Spacefile for Deta Space deployment
+# Deta Space configuration for IntelliDoc backend
+
+v: 0
+micros:
+  - name: intellidoc-backend
+    src: .
+    engine: python3.9
+    primary: true
+    
+    # Presets for installing dependencies
+    presets:
+      env:
+        - name: DETA_SPACE_APP
+          description: Deta Space app identifier
+          default: "intellidoc"
+    
+    # Public routes (exposed to the internet)
+    public_routes:
+      - "/*"
+    
+    # Run command
+    run: "uvicorn app.main:app --host 0.0.0.0 --port 8080"
+    
+    # Development command (optional)
+    dev: "uvicorn app.main:app --reload --host 0.0.0.0 --port 8080"
